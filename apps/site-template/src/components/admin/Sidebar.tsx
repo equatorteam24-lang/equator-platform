@@ -7,6 +7,7 @@ const nav = [
   { href: '/admin',           label: 'Дашборд',      icon: '◻', exact: true },
   { href: '/admin/leads',     label: 'Заявки (CRM)', icon: '✉' },
   { href: '/admin/analytics', label: 'Аналітика',    icon: '📈' },
+  { href: '/admin/content',   label: 'Контент сайту',icon: '🖊' },
   { href: '/admin/pages',     label: 'Сторінки',     icon: '📄' },
   { href: '/admin/seo',       label: 'SEO',          icon: '🔍' },
   { href: '/admin/settings',  label: 'Налаштування', icon: '⚙' },

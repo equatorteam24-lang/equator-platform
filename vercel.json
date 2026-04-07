@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm --filter=@equator/super-admin exec next build",
+  "buildCommand": "cd apps/super-admin && ./node_modules/.bin/next build",
   "outputDirectory": "apps/super-admin/.next",
   "installCommand": "pnpm install",
   "framework": null

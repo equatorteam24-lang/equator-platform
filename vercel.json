@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm build --filter=@equator/super-admin",
+  "outputDirectory": "apps/super-admin/.next",
+  "installCommand": "pnpm install"
+}

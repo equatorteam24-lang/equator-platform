@@ -1,0 +1,10 @@
+{
+  "name": "@equator/config",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./typescript": "./typescript.json",
+    "./tailwind": "./tailwind.js",
+    "./eslint": "./eslint.js"
+  }
+}

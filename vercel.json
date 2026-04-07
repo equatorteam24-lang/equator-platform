@@ -1,6 +1,4 @@
 {
-  "buildCommand": "pnpm --filter=@equator/super-admin run build",
-  "outputDirectory": "apps/super-admin/.next",
   "installCommand": "pnpm install",
   "framework": null
 }

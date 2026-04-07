@@ -1,24 +1,517 @@
 import type { Metadata } from 'next'
-import ContactForm from '@/components/ContactForm'
+import Navbar from '@/components/Navbar'
+import CTAButton from '@/components/CTAButton'
 
 export const metadata: Metadata = {
-  title: 'Головна',
-  description: 'Опис сайту',
+  title: 'Roofing Work — Професійні покрівельні роботи',
+  description: 'Фальцева покрівля, металочерепиця, профнастил — монтаж під ключ в Івано-Франківській та Львівській областях.',
 }
+
+// Images
+const HERO_BG = 'https://images.unsplash.com/photo-1706164971302-e30c0640cc3b?w=1920&q=80&auto=format&fit=crop'
+const WORK_HERO = 'https://images.unsplash.com/photo-1634750006909-3258af95e257?w=1920&q=80&auto=format&fit=crop'
+const CTA_BG = 'https://www.figma.com/api/mcp/asset/c74cb262-59d7-4203-a213-fc30291980c7'
+const LOGO_TOP = 'https://www.figma.com/api/mcp/asset/bfe0c37b-7671-486d-a6ac-92d91dc43b4e'
+const LOGO_WORK = 'https://www.figma.com/api/mcp/asset/cdf4e1d2-6493-47e1-abc1-d735ce5f774b'
+
+const SERVICE_IMGS = [
+  'https://www.figma.com/api/mcp/asset/92baa573-573b-41a0-9025-a89d6a2ed093',
+  'https://www.figma.com/api/mcp/asset/34a1f4d1-41a3-42e7-8699-89ff6621b8c4',
+  'https://www.figma.com/api/mcp/asset/590011ab-7e6a-4987-9988-16045a216a61',
+  'https://www.figma.com/api/mcp/asset/203eb353-aa6f-4f31-a744-8c6d20659e9c',
+]
+
+const TRUST_PHOTO = 'https://www.figma.com/api/mcp/asset/8fa37148-89dd-4996-88f8-dd8b2f2cb2b4'
+const ABOUT_PHOTO = 'https://www.figma.com/api/mcp/asset/09d7a461-f25d-4dab-b271-c99a4a56f961'
+
+const PARTNERS = [
+  { img: 'https://www.figma.com/api/mcp/asset/410de29d-eddb-49f2-8e31-0c65cafc66f8', bg: 'bg-white border border-[#f4f5f9]' },
+  { img: 'https://www.figma.com/api/mcp/asset/6c108e88-e2db-4b7c-b1c2-3695170be9cb', bg: 'bg-[#090909]' },
+  { img: 'https://www.figma.com/api/mcp/asset/da492347-f6fa-4853-b956-028cd0f48c84', bg: 'bg-[#f8f8f8]' },
+  { img: 'https://www.figma.com/api/mcp/asset/93321fec-1d14-4352-b6ed-d4d8fee53f99', bg: 'bg-[#f2f2f2]' },
+  { img: 'https://www.figma.com/api/mcp/asset/38f8007b-a240-4f92-a2f5-69d8acddfcff', bg: 'bg-[#252625]' },
+]
+
+const GALLERY = [
+  'https://images.unsplash.com/photo-1765808376054-e224c7dbcdee?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1765808376624-aba74b96859f?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1516880967556-b295d8e7b611?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1618833012757-28d87272966f?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1773432114061-2ae201208630?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1722118151004-3ddaba0450e5?w=800&q=80&auto=format&fit=crop',
+]
+
+const SERVICES = [
+  { title: 'Монтаж фальцевої покрівлі', price: 'від 2000 грн/м²', img: SERVICE_IMGS[0] },
+  { title: 'Монтаж металочерепиці', price: 'від 2000 грн/м²', img: SERVICE_IMGS[1] },
+  { title: 'Монтаж профнастилу', price: 'від 2000 грн/м²', img: SERVICE_IMGS[2] },
+  { title: 'Демонтаж старого даху', price: 'від 2000 грн/м²', img: SERVICE_IMGS[3] },
+]
+
+const FEATURES = [
+  {
+    title: 'Герметичність',
+    desc: "З'єднання швами (фальцем) без наскрізних отворів повністю виключає протікання.",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M16 4C9.37 4 4 9.37 4 16s5.37 12 12 12 12-5.37 12-12S22.63 4 16 4zm-1 17l-5-5 1.41-1.41L15 18.17l7.59-7.59L24 12l-9 9z" fill="#fe4f18"/>
+      </svg>
+    ),
+  },
+  {
+    title: 'Довговічність',
+    desc: 'Служить від 30 до 75 років, витримуючи значні снігові та вітрові навантаження.',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2L2 9l14 7 14-7-14-7zM2 23l14 7 14-7M2 16l14 7 14-7" stroke="#fe4f18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
+    title: 'Естетичність',
+    desc: 'Мінімалістичний і сучасний вигляд, що підходить для будь-якої архітектури.',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M28 9H4a2 2 0 00-2 2v10a2 2 0 002 2h24a2 2 0 002-2V11a2 2 0 00-2-2zM8 19a3 3 0 110-6 3 3 0 010 6zm8 0a3 3 0 110-6 3 3 0 010 6zm8 0a3 3 0 110-6 3 3 0 010 6z" fill="#fe4f18"/>
+      </svg>
+    ),
+  },
+  {
+    title: 'Універсальність',
+    desc: 'Монтується на дахах будь-якої складності та навіть з мінімальним ухилом.',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2l14 12v16H2V14L16 2z" stroke="#fe4f18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+]
+
+const PROCESS_STEPS = [
+  { num: '01', title: 'Замір та консультація', desc: 'Виїзд на об\'єкт, уточнення запиту та технічні заміри' },
+  { num: '02', title: 'Узгодження деталей', desc: 'Детальний кошторис та затвердження бюджету' },
+  { num: '03', title: 'Монтаж', desc: 'Виконання робіт згідно з технологією та графіком' },
+  { num: '04', title: 'Здача та гарантія', desc: 'Перевірка якості, прийом об\'єкта та передача результату' },
+]
+
+const TRUST_ITEMS = [
+  { label: 'Досвідчена команда майстрів', active: false },
+  { label: 'Чесна ціна та прозорий кошторис', active: true },
+  { label: 'Офіційна робота за договором', active: false },
+  { label: 'Виконуємо повний цикл робіт', active: false },
+  { label: 'Працюємо за вашим проектом', active: false },
+]
 
 export default function HomePage() {
   return (
-    <main>
-      {/* Hero section — замінюється версткою з Figma */}
-      <section className="min-h-screen flex flex-col items-center justify-center bg-white px-4">
-        <h1 className="text-4xl font-bold text-gray-900 text-center mb-4">
-          Назва компанії
-        </h1>
-        <p className="text-lg text-gray-500 text-center mb-10 max-w-xl">
-          Короткий опис. Цей текст буде замінено на контент з Figma макету.
-        </p>
-        <ContactForm />
-      </section>
-    </main>
+    <>
+      <Navbar />
+      <main>
+
+        {/* ─── HERO ─── */}
+        <section className="relative min-h-screen flex flex-col">
+          <img
+            src={HERO_BG}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/55" />
+
+          <div className="relative z-10 flex-1 flex flex-col justify-end pb-16 md:pb-20 px-5 max-w-[1160px] mx-auto w-full">
+            <p className="text-white/70 font-body text-base md:text-lg mb-10 max-w-[520px] leading-relaxed">
+              Спеціалізуємося на повному циклі влаштування фальцевої покрівлі,
+              клік-фальці, металочерепиці та профнастилі — від дерев'яного каркасу до готового даху.
+            </p>
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <h1 className="font-heading font-medium text-4xl sm:text-5xl lg:text-[62px] text-white uppercase leading-[1.2] flex-1 max-w-[700px]">
+                Професійні покрівельні роботи
+              </h1>
+              <div className="sm:self-end">
+                <CTAButton>Отримати консультацію</CTAButton>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── SERVICES ─── */}
+        <section id="services" className="py-20 md:py-24 px-5">
+          <div className="max-w-[1160px] mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-11">
+              <div className="flex flex-col gap-4 max-w-[540px]">
+                <span className="inline-block bg-[#f4f5f9] text-[#999] text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] w-fit">
+                  Наші послуги
+                </span>
+                <h2 className="font-heading font-semibold text-3xl md:text-[36px] text-[#090909] leading-[1.1]">
+                  Комплексні покрівельні роботи
+                </h2>
+              </div>
+              <p className="text-[#9c9c9c] font-body text-base leading-[1.4] max-w-[520px]">
+                Вартість покрівельних робіт оцінюється індивідуально залежно від складності
+                архітектури, висоти будівлі, площі покрівлі, обраного матеріалу та необхідності
+                додаткових послуг.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {SERVICES.map((service) => (
+                <div
+                  key={service.title}
+                  className="bg-white rounded-[24px] p-5 flex flex-col gap-5 shadow-[0px_4px_20px_0px_#e9e9e9]"
+                >
+                  <div className="flex flex-col gap-1">
+                    <p className="font-body font-medium text-base text-[#090909] leading-[1.2]">{service.title}</p>
+                    <p className="font-body font-medium text-sm text-[#fe4f18] leading-[1.4]">{service.price}</p>
+                  </div>
+                  <div className="rounded-[20px] overflow-hidden h-[200px]">
+                    <img
+                      src={service.img}
+                      alt={service.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── MAIN DIRECTION ─── */}
+        <section id="about" className="py-20 md:py-24 px-5 bg-white">
+          <div className="max-w-[1160px] mx-auto">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-14">
+              <h2 className="font-heading font-medium text-5xl md:text-[70px] text-[#090909] uppercase leading-[1.15]">
+                Основний<br />напрямок
+              </h2>
+              <p className="text-[#9c9c9c] font-body text-base leading-[1.5] max-w-[440px] md:pt-4">
+                Ми спеціалізуємось на монтажі дахів під ключ. Працюємо з приватними будинками,
+                котеджами та господарськими спорудами.
+              </p>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-10 mb-14">
+              <div className="flex flex-col gap-5 max-w-[500px]">
+                <span className="inline-block bg-[#f4f5f9] text-[#999] text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] w-fit">
+                  Наш досвід
+                </span>
+                <h3 className="font-heading font-semibold text-2xl text-[#090909]">Комплексні роботи</h3>
+                <p className="text-[#9c9c9c] font-body text-base leading-[1.5]">
+                  Маємо власне сучасне обладнання для роботи з фальцевою покрівлею. Завдяки цьому
+                  виготовляємо покрівельні картини безпосередньо на об'єкті та одразу монтуємо їх.
+                  Такий підхід забезпечує точність, меншу кількість стиків та кращу герметичність.
+                </p>
+              </div>
+              <div className="flex items-center gap-4 mt-2 lg:mt-auto flex-wrap">
+                <CTAButton>Розрахувати вартість</CTAButton>
+                <CTAButton variant="outline" className="border border-[#e5e5e5]">
+                  Результати роботи
+                </CTAButton>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {FEATURES.map((f) => (
+                <div key={f.title} className="bg-[#f4f5f9] rounded-[12px] p-6 flex flex-col gap-4">
+                  {f.icon}
+                  <div>
+                    <p className="font-body font-semibold text-base text-[#090909] mb-1">{f.title}</p>
+                    <p className="font-body text-sm text-[#9c9c9c] leading-[1.5]">{f.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── WORK WITH US ─── */}
+        <section id="works" className="bg-[#0d0d0d] rounded-t-[44px] overflow-hidden">
+          {/* Top image */}
+          <div className="relative h-[300px] md:h-[440px] lg:h-[560px]">
+            <img src={WORK_HERO} alt="Роботи на об'єктах" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40" />
+          </div>
+
+          <div className="px-5 py-16 md:py-20">
+            <div className="max-w-[1160px] mx-auto">
+              <h2 className="font-heading font-medium text-4xl md:text-[56px] text-white uppercase leading-[1.2] mb-12">
+                Робота з нами
+              </h2>
+
+              {/* Process steps */}
+              <div className="mb-16">
+                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] mb-6">
+                  Етапи роботи
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {PROCESS_STEPS.map((step) => (
+                    <div key={step.num} className="bg-white/8 border border-white/10 rounded-[12px] p-6">
+                      <p className="font-heading font-semibold text-[#fe4f18] text-lg mb-3">{step.num}</p>
+                      <p className="font-body font-medium text-white text-base mb-2">{step.title}</p>
+                      <p className="font-body text-white/50 text-sm leading-[1.5]">{step.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gallery */}
+              <div className="mb-14">
+                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] mb-4">
+                  Наші роботи
+                </span>
+                <h3 className="font-heading font-semibold text-2xl md:text-3xl text-white mb-8">
+                  Процес монтажу на реальних об'єктах
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {GALLERY.map((img, i) => (
+                    <div key={i} className="rounded-[16px] overflow-hidden aspect-[4/3]">
+                      <img
+                        src={img}
+                        alt={`Роботи ${i + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Two-column info block */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white/5 border border-white/10 rounded-[20px] p-8">
+                  <h3 className="font-heading font-semibold text-xl text-white mb-4">
+                    Розрахуємо ваш дах без зайвих складнощів
+                  </h3>
+                  <p className="font-body text-white/60 text-base leading-[1.5] mb-4">
+                    Перед початком робіт проводимо огляд об'єкта, виконуємо точні заміри та готуємо
+                    детальний прорахунок. Узгоджуємо матеріали, етапи монтажу та строки виконання.
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {['Працюємо акуратно', 'Чистий монтаж без хаосу на ділянці та пошкодження матеріалів'].map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-white/70 font-body text-sm">
+                        <span className="text-[#fe4f18] mt-0.5">✓</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-[#fe4f18] rounded-[20px] p-8 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-heading font-semibold text-xl text-white mb-3">
+                      Бажаєте розрахувати вартість вашого проекту?
+                    </h3>
+                    <p className="font-body text-white/80 text-base leading-[1.5] mb-6">
+                      Зв'яжіться з нами — проконсультуємо, зорієнтуємо по вартості та узгодимо
+                      зручний час для огляду об'єкта.
+                    </p>
+                  </div>
+                  <CTAButton className="bg-white text-[#090909] hover:bg-white/90">
+                    Обговорити мій проект
+                  </CTAButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── WHY TRUST ─── */}
+        <section className="py-20 md:py-24 px-5 bg-white rounded-t-[64px]">
+          <div className="max-w-[1160px] mx-auto flex flex-col gap-16">
+
+            {/* Header */}
+            <h2 className="font-heading font-medium text-5xl md:text-[70px] text-[#090909] uppercase leading-[1.2]">
+              Чому нам довіряють
+            </h2>
+
+            {/* Trust + photo */}
+            <div className="flex flex-col lg:flex-row items-start gap-10">
+              <div className="flex flex-col gap-5 max-w-[500px]">
+                <h3 className="font-body font-medium text-xl text-[#090909] leading-[1.4]">
+                  Чому нам довіряють монтаж покрівлі?
+                </h3>
+                <p className="font-body text-[#9c9c9c] text-base leading-[1.5]">
+                  Ми завжди дотримуємося порядку на робочій ділянці, щоб уникнути зайвого хаосу.
+                  Наша команда працює з максимальною уважністю, забезпечуючи ефективність і
+                  безпеку на кожному етапі.
+                </p>
+              </div>
+              <div className="lg:ml-auto rounded-[20px] overflow-hidden w-full lg:w-[520px] h-[260px] lg:h-[294px] flex-shrink-0">
+                <img
+                  src={TRUST_PHOTO}
+                  alt="Покрівельні роботи"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Trust cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {TRUST_ITEMS.map((item) => (
+                <div
+                  key={item.label}
+                  className={`rounded-[8px] p-6 h-[120px] flex items-center ${
+                    item.active ? 'bg-[#fe4f18]' : 'bg-[#f4f5f9]'
+                  }`}
+                >
+                  <p className={`font-body font-medium text-base leading-[1.2] ${item.active ? 'text-white' : 'text-[#090909]'}`}>
+                    {item.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* About company */}
+            <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start" id="military">
+              <div className="relative rounded-[20px] overflow-hidden w-full lg:w-[500px] h-[380px] lg:h-[460px] flex-shrink-0">
+                <img
+                  src={ABOUT_PHOTO}
+                  alt="Roofing Work"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-6 left-6">
+                  <div className="relative w-[100px] h-[37px]">
+                    <img src={LOGO_TOP} alt="Roofing" className="absolute top-0 left-0 h-[23px] w-auto" />
+                    <img src={LOGO_WORK} alt="Work" className="absolute bottom-0 left-[31px] h-[15px] w-auto" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-6 flex-1">
+                <div className="flex flex-col gap-4">
+                  <span className="inline-block bg-[#f4f5f9] text-[#999] text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] w-fit">
+                    Коротко про нашу роботу
+                  </span>
+                  <h3 className="font-heading font-semibold text-3xl md:text-[36px] text-[#090909] leading-[1.1]">
+                    Професійна покрівля
+                  </h3>
+                </div>
+                <p className="font-body text-[#9c9c9c] text-base leading-[1.5]">
+                  Ми — команда з 5-річним досвідом, що спеціалізується виключно на дахах.
+                  Працюємо з приватними особами та забудовниками (підряд/субпідряд) в
+                  Івано-Франківській та Львівській областях.
+                </p>
+                <p className="font-body text-[#9c9c9c] text-base leading-[1.5]">
+                  Виконуємо нове будівництво та реконструкцію об'єктів будь-якої складності:
+                  від котеджів до готелів. Пропонуємо як повний комплекс робіт «під ключ»,
+                  так і окремі етапи монтажу.
+                </p>
+              </div>
+            </div>
+
+            {/* Partners */}
+            <div className="flex flex-col gap-6">
+              <span className="inline-block bg-[#f4f5f9] text-[#999] text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] w-fit">
+                Наші партнери та об'єкти
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                {PARTNERS.map((p, i) => (
+                  <div key={i} className={`${p.bg} rounded-[12px] h-[120px] md:h-[160px] flex items-center justify-center p-5`}>
+                    <img src={p.img} alt={`Партнер ${i + 1}`} className="max-h-[80px] max-w-full object-contain" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* ─── CTA BANNER ─── */}
+        <section className="relative overflow-hidden rounded-t-[44px]">
+          <img src={CTA_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/80" />
+          <div className="relative z-10 px-5 py-20 md:py-28">
+            <div className="max-w-[1160px] mx-auto flex flex-col lg:flex-row lg:items-end gap-10 lg:gap-20">
+              <h2 className="font-heading font-medium text-5xl md:text-[70px] text-white uppercase leading-[1.2] flex-1">
+                Потрібен надійний дах?
+              </h2>
+              <div className="flex flex-col gap-6 max-w-[520px]">
+                <p className="font-body font-medium text-white/80 text-lg leading-[1.5]">
+                  Залиште заявку — прорахуємо вартість та проконсультуємо щодо оптимального
+                  рішення для вашого об'єкта.
+                </p>
+                <CTAButton>Отримати консультацію</CTAButton>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── CONTACTS ─── */}
+        <section id="contacts" className="bg-[#0d0d0d] px-5 py-16 md:py-20">
+          <div className="max-w-[1160px] mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+
+              {/* Contacts col */}
+              <div className="flex flex-col gap-5">
+                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.06em] px-2 py-1.5 rounded-[2px] w-fit">
+                  Контакти
+                </span>
+                <div className="flex flex-col gap-2">
+                  <a href="tel:+380665864029" className="font-body text-white text-base hover:text-[#fe4f18] transition-colors">
+                    +380665864029
+                  </a>
+                  <a href="mailto:example@gmail.com" className="font-body text-white/60 text-base hover:text-[#fe4f18] transition-colors">
+                    example@gmail.com
+                  </a>
+                </div>
+                {/* Social icons */}
+                <div className="flex gap-3">
+                  {[
+                    { label: 'Telegram', href: '#', path: 'M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.94 8.19l-2.02 9.53c-.15.68-.54.84-1.09.52l-3-2.21-1.45 1.4c-.16.16-.3.3-.6.3l.21-3.05 5.52-4.99c.24-.21-.05-.33-.37-.12L6.27 14.03 3.3 13.1c-.66-.2-.67-.66.14-.98l11.62-4.48c.55-.2 1.03.13.88.55z' },
+                    { label: 'Viber', href: '#', path: 'M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm2.83 16.56c-.4.11-.81.15-1.2.15-1.54 0-3.24-.85-4.6-2.22-1.37-1.36-2.22-3.06-2.22-4.6 0-.4.04-.8.15-1.2.3-1.12 1.28-1.85 2.29-1.63l.56.12c.41.09.77.38.96.79l.87 1.88c.18.39.14.85-.1 1.21l-.46.66c-.13.18-.1.42.05.59l1.26 1.26c.17.15.41.18.59.05l.66-.46c.36-.24.82-.28 1.21-.1l1.88.87c.41.19.7.55.79.96l.12.56c.22 1.01-.51 1.99-1.61 2.31z' },
+                    { label: 'WhatsApp', href: '#', path: 'M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm.05 3.6c4.67 0 8.35 3.7 8.35 8.35 0 4.66-3.68 8.35-8.35 8.35-1.47 0-2.85-.38-4.05-1.05L4 20.4l1.16-3.9A8.28 8.28 0 013.7 12c0-4.65 3.7-8.4 8.35-8.4zm-2.4 4.87c-.19-.44-.4-.45-.58-.46-.15-.01-.32-.01-.49-.01-.17 0-.44.06-.67.32-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.57.12.17 1.72 2.75 4.24 3.74 2.1.82 2.52.66 2.97.62.46-.04 1.47-.6 1.68-1.18.21-.57.21-1.07.15-1.17-.06-.1-.23-.16-.49-.28-.26-.12-1.47-.73-1.7-.81-.23-.08-.4-.12-.57.13-.17.25-.64.8-.78.97-.14.17-.29.18-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.38-1.72-.15-.25-.02-.39.11-.51.11-.11.25-.28.37-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.35-.77-1.85z' },
+                  ].map((social) => (
+                    <a
+                      key={social.label}
+                      href={social.href}
+                      aria-label={social.label}
+                      className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-[#fe4f18] transition-colors"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                        <path d={social.path} />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Address col */}
+              <div className="flex flex-col gap-5">
+                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.06em] px-2 py-1.5 rounded-[2px] w-fit">
+                  Адреса
+                </span>
+                <p className="font-body text-white text-base">м. Місто, вул. Адресова 10 А</p>
+                <a href="#" className="font-body text-[#fe4f18] text-base hover:underline inline-flex items-center gap-1">
+                  Дивитись на мапі
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </a>
+              </div>
+
+              {/* Military col */}
+              <div className="flex flex-col gap-5">
+                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.06em] px-2 py-1.5 rounded-[2px] w-fit">
+                  Підтримуємо військових
+                </span>
+                <p className="font-body text-white text-base leading-[1.5]">
+                  Військові можуть скористатися індивідуальними знижками на всі види покрівельних послуг.
+                  <span className="text-white/50"> Деталі — під час консультації.</span>
+                </p>
+                <CTAButton className="w-fit bg-white/10 text-white hover:bg-white/20 border-0">
+                  Залишити заявку 🇺🇦
+                </CTAButton>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ─── COPYRIGHT ─── */}
+        <footer className="bg-[#0d0d0d] border-t border-white/10 px-5 py-4">
+          <div className="max-w-[1160px] mx-auto flex items-center justify-between">
+            <p className="font-body text-white/40 text-sm">© 2026. Всі права захищені</p>
+            <p className="font-body text-white/30 text-xs">all rights reserved</p>
+          </div>
+        </footer>
+
+      </main>
+    </>
   )
 }

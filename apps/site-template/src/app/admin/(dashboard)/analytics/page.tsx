@@ -17,7 +17,7 @@ export default async function AnalyticsPage() {
       .eq('org_id', ORG_ID).eq('event', 'pageview').gte('created_at', day30ago),
 
     supabase.rpc('count_unique_sessions', { p_org_id: ORG_ID, p_from: day30ago })
-      .select('*', { count: 'exact', head: true }),
+      .select('*'),
 
     supabase.from('analytics_events').select('page')
       .eq('org_id', ORG_ID).eq('event', 'pageview').gte('created_at', day30ago),

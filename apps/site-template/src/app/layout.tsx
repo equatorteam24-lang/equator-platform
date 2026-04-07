@@ -1,17 +1,28 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Onest, Montserrat } from 'next/font/google'
 import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 import ThirdPartyScripts from '@/components/ThirdPartyScripts'
+import ModalProvider from '@/components/ModalProvider'
 import { createClient } from '@/lib/supabase'
 import { ORG_ID } from '@/lib/org'
 import type { OrganizationSettings } from '@equator/db/types'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin', 'cyrillic'] })
+const onest = Onest({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-onest',
+  display: 'swap',
+})
+
+const montserrat = Montserrat({
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-montserrat',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: { template: '%s | Site', default: 'Site' },
-  description: '',
+  title: { template: '%s | Roofing Work', default: 'Roofing Work — Професійні покрівельні роботи' },
+  description: 'Фальцева покрівля, металочерепиця, профнастил — монтаж під ключ в Івано-Франківській та Львівській областях.',
   robots: { index: true, follow: true },
   openGraph: { type: 'website' },
 }
@@ -34,10 +45,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const settings = await getOrgSettings()
 
   return (
-    <html lang="uk" className="scroll-smooth">
-      <body className={`${inter.className} antialiased`}>
+    <html lang="uk" className={`scroll-smooth ${onest.variable} ${montserrat.variable}`}>
+      <body className="font-body antialiased">
         <AnalyticsProvider>
-          {children}
+          <ModalProvider>
+            {children}
+          </ModalProvider>
         </AnalyticsProvider>
         <ThirdPartyScripts settings={settings} />
       </body>

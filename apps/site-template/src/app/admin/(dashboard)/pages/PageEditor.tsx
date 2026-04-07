@@ -15,8 +15,8 @@ export default function PageEditor({ page }: { page?: Page }) {
   const [slug, setSlug]     = useState(page?.slug ?? '/')
   const [status, setStatus] = useState<Page['status']>(page?.status ?? 'draft')
   const [body, setBody]     = useState(
-    typeof page?.content === 'object' && 'html' in (page?.content as Record<string, unknown>)
-      ? String((page.content as Record<string, unknown>).html)
+    typeof page?.content === 'object' && 'html' in (page?.content as unknown as Record<string, unknown>)
+      ? String((page.content as unknown as Record<string, unknown>).html)
       : ''
   )
   const [saving, setSaving] = useState(false)

@@ -1,0 +1,8 @@
+node_modules
+.next
+.turbo
+dist
+out
+*.tsbuildinfo
+.pnpm-store
+supabase/.temp

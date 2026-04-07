@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: 'Фальцева покрівля, металочерепиця, профнастил — монтаж під ключ в Івано-Франківській та Львівській областях.',
 }
 
-const LOGO_TOP  = 'https://www.figma.com/api/mcp/asset/bfe0c37b-7671-486d-a6ac-92d91dc43b4e'
-const LOGO_WORK = 'https://www.figma.com/api/mcp/asset/cdf4e1d2-6493-47e1-abc1-d735ce5f774b'
+const LOGO_TOP  = 'https://dlsauceqpbkweuzxuvfc.supabase.co/storage/v1/object/public/media/roofing-work/assets/logo-top.svg'
+const LOGO_WORK = 'https://dlsauceqpbkweuzxuvfc.supabase.co/storage/v1/object/public/media/roofing-work/assets/logo-work.svg'
 
 // Feature icons (design-only, not editable)
 const FEATURE_ICONS = [

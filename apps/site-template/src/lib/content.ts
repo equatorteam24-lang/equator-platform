@@ -29,6 +29,8 @@ export interface SiteContent {
   contacts: ContactsContent
 }
 
+const S = 'https://dlsauceqpbkweuzxuvfc.supabase.co/storage/v1/object/public/media/roofing-work/assets'
+
 export const DEFAULT_CONTENT: SiteContent = {
   hero: {
     title:    'Професійні покрівельні роботи',
@@ -39,10 +41,10 @@ export const DEFAULT_CONTENT: SiteContent = {
     heading:     'Комплексні покрівельні роботи',
     description: 'Вартість покрівельних робіт оцінюється індивідуально залежно від складності архітектури, висоти будівлі, площі покрівлі, обраного матеріалу та необхідності додаткових послуг.',
     items: [
-      { title: 'Монтаж фальцевої покрівлі', price: 'від 2000 грн/м²', image: 'https://www.figma.com/api/mcp/asset/92baa573-573b-41a0-9025-a89d6a2ed093' },
-      { title: 'Монтаж металочерепиці',     price: 'від 2000 грн/м²', image: 'https://www.figma.com/api/mcp/asset/34a1f4d1-41a3-42e7-8699-89ff6621b8c4' },
-      { title: 'Монтаж профнастилу',         price: 'від 2000 грн/м²', image: 'https://www.figma.com/api/mcp/asset/590011ab-7e6a-4987-9988-16045a216a61' },
-      { title: 'Демонтаж старого даху',      price: 'від 2000 грн/м²', image: 'https://www.figma.com/api/mcp/asset/203eb353-aa6f-4f31-a744-8c6d20659e9c' },
+      { title: 'Монтаж фальцевої покрівлі', price: 'від 2000 грн/м²', image: `${S}/service-1.png` },
+      { title: 'Монтаж металочерепиці',     price: 'від 2000 грн/м²', image: `${S}/service-2.png` },
+      { title: 'Монтаж профнастилу',         price: 'від 2000 грн/м²', image: `${S}/service-3.png` },
+      { title: 'Демонтаж старого даху',      price: 'від 2000 грн/м²', image: `${S}/service-4.png` },
     ],
   },
   about: {
@@ -79,7 +81,7 @@ export const DEFAULT_CONTENT: SiteContent = {
     ],
   },
   trust: {
-    photo:      'https://www.figma.com/api/mcp/asset/8fa37148-89dd-4996-88f8-dd8b2f2cb2b4',
+    photo:      `${S}/trust-photo.png`,
     items: [
       { label: 'Досвідчена команда майстрів',       active: false },
       { label: 'Чесна ціна та прозорий кошторис',   active: true  },
@@ -87,19 +89,19 @@ export const DEFAULT_CONTENT: SiteContent = {
       { label: 'Виконуємо повний цикл робіт',        active: false },
       { label: 'Працюємо за вашим проектом',         active: false },
     ],
-    aboutPhoto: 'https://www.figma.com/api/mcp/asset/09d7a461-f25d-4dab-b271-c99a4a56f961',
+    aboutPhoto: `${S}/about-photo.png`,
     aboutText1: 'Ми — команда з 5-річним досвідом, що спеціалізується виключно на дахах. Працюємо з приватними особами та забудовниками в Івано-Франківській та Львівській областях.',
     aboutText2: 'Виконуємо нове будівництво та реконструкцію об\'єктів будь-якої складності: від котеджів до готелів. Пропонуємо як повний комплекс робіт «під ключ», так і окремі етапи монтажу.',
   },
   partners: [
-    { img: 'https://www.figma.com/api/mcp/asset/410de29d-eddb-49f2-8e31-0c65cafc66f8', bg: 'bg-white border border-[#f4f5f9]' },
-    { img: 'https://www.figma.com/api/mcp/asset/6c108e88-e2db-4b7c-b1c2-3695170be9cb', bg: 'bg-[#090909]' },
-    { img: 'https://www.figma.com/api/mcp/asset/da492347-f6fa-4853-b956-028cd0f48c84', bg: 'bg-[#f8f8f8]' },
-    { img: 'https://www.figma.com/api/mcp/asset/93321fec-1d14-4352-b6ed-d4d8fee53f99', bg: 'bg-[#f2f2f2]' },
-    { img: 'https://www.figma.com/api/mcp/asset/38f8007b-a240-4f92-a2f5-69d8acddfcff', bg: 'bg-[#252625]' },
+    { img: `${S}/partner-1.png`, bg: 'bg-white border border-[#f4f5f9]' },
+    { img: `${S}/partner-2.png`, bg: 'bg-[#090909]' },
+    { img: `${S}/partner-3.png`, bg: 'bg-[#f8f8f8]' },
+    { img: `${S}/partner-4.png`, bg: 'bg-[#f2f2f2]' },
+    { img: `${S}/partner-5.png`, bg: 'bg-[#252625]' },
   ],
   cta: {
-    bgImage: 'https://www.figma.com/api/mcp/asset/c74cb262-59d7-4203-a213-fc30291980c7',
+    bgImage: `${S}/cta-bg.png`,
     title:   'Потрібен надійний дах?',
     text:    'Залиште заявку — прорахуємо вартість та проконсультуємо щодо оптимального рішення для вашого об\'єкта.',
   },

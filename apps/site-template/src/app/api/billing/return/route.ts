@@ -6,6 +6,24 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // 303 See Other changes POST → GET, so browser re-requests with cookies intact
-  return NextResponse.redirect(new URL('/admin/billing?status=done', req.url), 303)
+  // Read WayForPay response body to get transaction status
+  let body: Record<string, string> = {}
+  try {
+    const text = await req.text()
+    text.split('&').forEach(pair => {
+      const [k, v] = pair.split('=')
+      if (k) body[decodeURIComponent(k)] = decodeURIComponent(v ?? '')
+    })
+  } catch { /* ignore */ }
+
+  const status = body.transactionStatus ?? 'done'
+  const reason = body.reason ?? body.reasonCode ?? ''
+  const url = new URL('/admin/billing', req.url)
+  url.searchParams.set('status', status)
+  if (reason) url.searchParams.set('reason', reason)
+
+  console.log('[WayForPay return]', body)
+
+  // 303 See Other changes POST → GET so session cookies are preserved
+  return NextResponse.redirect(url, 303)
 }

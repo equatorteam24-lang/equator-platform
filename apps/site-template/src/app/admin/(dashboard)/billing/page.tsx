@@ -10,8 +10,8 @@ const statusLabel: Record<string, { text: string; color: string }> = {
 }
 
 const planLabel: Record<string, string> = {
-  monthly: 'Місячна ($15/міс)',
-  annual:  'Річна ($100/рік)',
+  monthly: 'Місячна (650 грн/міс)',
+  annual:  'Річна (4200 грн/рік)',
 }
 
 export default async function BillingPage({
@@ -80,7 +80,7 @@ export default async function BillingPage({
         <PlanCard
           plan="monthly"
           title="Місячна підписка"
-          price="$15"
+          price="650 грн"
           period="на місяць"
           description="Автопродовження кожен місяць"
           current={sub?.plan === 'monthly' && sub?.status === 'active'}
@@ -88,9 +88,9 @@ export default async function BillingPage({
         <PlanCard
           plan="annual"
           title="Річна підписка"
-          price="$100"
+          price="4200 грн"
           period="на рік"
-          description="Економія $80 порівняно з місячною"
+          description="Економія 1600 грн порівняно з місячною"
           current={sub?.plan === 'annual' && sub?.status === 'active'}
           highlight
         />

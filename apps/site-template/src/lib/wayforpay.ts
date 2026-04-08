@@ -7,8 +7,8 @@ const WFP_API_URL      = 'https://api.wayforpay.com/api'
 const WFP_PAY_URL      = 'https://secure.wayforpay.com/pay'
 
 export const PLANS = {
-  monthly: { amount: 15,  currency: 'USD', label: 'Місячна підписка' },
-  annual:  { amount: 100, currency: 'USD', label: 'Річна підписка'   },
+  monthly: { amount: 650,  currency: 'UAH', label: 'Місячна підписка' },
+  annual:  { amount: 4200, currency: 'UAH', label: 'Річна підписка'   },
 } as const
 
 export type Plan = keyof typeof PLANS

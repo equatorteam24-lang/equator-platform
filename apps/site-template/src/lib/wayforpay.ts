@@ -55,9 +55,7 @@ export function buildPaymentParams(
     productCount:       '1',
     productPrice:       String(amount),
     returnUrl,
-    serviceUrl,        // webhook URL
-    // Save card token for recurring
-    recToken:           'y',
+    serviceUrl,        // webhook URL — WayForPay returns recToken here after success
     language:           'UA',
   }
 }

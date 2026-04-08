@@ -81,6 +81,7 @@ export default async function BillingPage({
           plan="monthly"
           title="Місячна підписка"
           price="650 грн"
+          usdHint="~$15"
           period="на місяць"
           description="Автопродовження кожен місяць"
           current={sub?.plan === 'monthly' && sub?.status === 'active'}
@@ -89,6 +90,7 @@ export default async function BillingPage({
           plan="annual"
           title="Річна підписка"
           price="4200 грн"
+          usdHint="~$100"
           period="на рік"
           description="Економія 1600 грн порівняно з місячною"
           current={sub?.plan === 'annual' && sub?.status === 'active'}
@@ -122,7 +124,7 @@ export default async function BillingPage({
                     {p.plan ? planLabel[p.plan] : '—'}
                   </td>
                   <td className="px-4 py-2.5 font-medium text-gray-900">
-                    ${p.amount} {p.currency}
+                    {p.amount} грн
                   </td>
                   <td className="px-4 py-2.5">
                     <PaymentStatusBadge status={p.status} reason={p.wayforpay_reason} />
@@ -138,11 +140,12 @@ export default async function BillingPage({
 }
 
 function PlanCard({
-  plan, title, price, period, description, current, highlight,
+  plan, title, price, usdHint, period, description, current, highlight,
 }: {
   plan: 'monthly' | 'annual'
   title: string
   price: string
+  usdHint?: string
   period: string
   description: string
   current?: boolean
@@ -160,6 +163,7 @@ function PlanCard({
         <span className="text-3xl font-bold text-gray-900">{price}</span>
         <span className="text-sm text-gray-400">/{period}</span>
       </div>
+      {usdHint && <p className="text-xs text-gray-400">{usdHint} за поточним курсом</p>}
       {current ? (
         <div className="rounded-lg bg-green-50 px-4 py-2 text-center text-sm font-medium text-green-700">
           Поточний план

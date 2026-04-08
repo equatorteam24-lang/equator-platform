@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// WayForPay POSTs back to returnUrl — convert to GET redirect so session cookies work
+// WayForPay redirects back to returnUrl — pass through all params for debugging
 export async function GET(req: NextRequest) {
-  return NextResponse.redirect(new URL('/admin/billing?status=done', req.url))
+  const incoming = req.nextUrl.searchParams
+  const url = new URL('/admin/billing', req.url)
+
+  // Forward all WayForPay query params
+  incoming.forEach((value, key) => url.searchParams.set(key, value))
+
+  // Ensure status is always set
+  if (!url.searchParams.has('status')) {
+    const txStatus = incoming.get('transactionStatus') ?? 'done'
+    url.searchParams.set('status', txStatus)
+  }
+
+  console.log('[WayForPay GET return]', Object.fromEntries(incoming.entries()))
+  return NextResponse.redirect(url)
 }
 
 export async function POST(req: NextRequest) {

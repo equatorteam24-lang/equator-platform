@@ -6,26 +6,29 @@ const MERCHANT_DOMAIN  = process.env.WAYFORPAY_MERCHANT_DOMAIN!
 const WFP_API_URL      = 'https://api.wayforpay.com/api'
 const WFP_PAY_URL      = 'https://secure.wayforpay.com/pay'
 
-export const PLANS = {
-  monthly: { amount: 650,  currency: 'UAH', label: 'Місячна підписка' },
-  annual:  { amount: 4200, currency: 'UAH', label: 'Річна підписка'   },
+// Prices in USD — converted to UAH at current rate before charging
+export const PLANS_USD = {
+  monthly: { usd: 15,  label: 'Місячна підписка' },
+  annual:  { usd: 100, label: 'Річна підписка'   },
 } as const
 
-export type Plan = keyof typeof PLANS
+export type Plan = keyof typeof PLANS_USD
 
 function hmac(str: string): string {
   return crypto.createHmac('md5', MERCHANT_SECRET).update(str).digest('hex')
 }
 
 // ─── Create hosted payment form params ────────────────────────────────────────
-// Returns the fields to POST to WFP_PAY_URL
+// amountUah — calculated from current exchange rate by the caller
 export function buildPaymentParams(
   plan: Plan,
   orderId: string,
   returnUrl: string,
   serviceUrl: string,
+  amountUah: number,
 ): Record<string, string> {
-  const { amount, currency, label } = PLANS[plan]
+  const { label } = PLANS_USD[plan]
+  const currency = 'UAH'
   const orderDate = Math.floor(Date.now() / 1000)
 
   // Signature string per WayForPay docs:
@@ -35,11 +38,11 @@ export function buildPaymentParams(
     MERCHANT_DOMAIN,
     orderId,
     orderDate,
-    amount,
+    amountUah,
     currency,
     label,
     1,
-    amount,
+    amountUah,
   ].join(';')
 
   return {
@@ -49,13 +52,13 @@ export function buildPaymentParams(
     merchantSignature:  hmac(sigString),
     orderReference:     orderId,
     orderDate:          String(orderDate),
-    amount:             String(amount),
+    amount:             String(amountUah),
     currency,
     productName:        label,
     productCount:       '1',
-    productPrice:       String(amount),
+    productPrice:       String(amountUah),
     returnUrl,
-    serviceUrl,        // webhook URL — WayForPay returns recToken here after success
+    serviceUrl,
     language:           'UA',
   }
 }
@@ -98,8 +101,10 @@ export async function chargeRecurring(
   recToken: string,
   orderId: string,
   plan: Plan,
+  amountUah: number,
 ): Promise<{ success: boolean; transactionId?: string; reason?: string }> {
-  const { amount, currency, label } = PLANS[plan]
+  const { label } = PLANS_USD[plan]
+  const currency = 'UAH'
   const orderDate = Math.floor(Date.now() / 1000)
 
   const sigString = [
@@ -107,11 +112,11 @@ export async function chargeRecurring(
     MERCHANT_DOMAIN,
     orderId,
     orderDate,
-    amount,
+    amountUah,
     currency,
     label,
     1,
-    amount,
+    amountUah,
   ].join(';')
 
   const body = {
@@ -120,11 +125,11 @@ export async function chargeRecurring(
     merchantDomainName: MERCHANT_DOMAIN,
     orderReference:     orderId,
     orderDate,
-    amount,
+    amount:             amountUah,
     currency,
     productName:        [label],
     productCount:       [1],
-    productPrice:       [amount],
+    productPrice:       [amountUah],
     recToken,
     merchantSignature:  hmac(sigString),
     apiVersion:         1,

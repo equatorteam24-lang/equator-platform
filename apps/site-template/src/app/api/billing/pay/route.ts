@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createServiceClient } from '@/lib/service'
 import { requireOrgId } from '@/lib/org'
-import { buildPaymentParams, getPayUrl, PLANS, type Plan } from '@/lib/wayforpay'
+import { buildPaymentParams, getPayUrl, PLANS_USD, type Plan } from '@/lib/wayforpay'
+import { getUsdRate, usdToUah } from '@/lib/exchange-rate'
 import { randomUUID } from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -36,18 +37,21 @@ export async function POST(req: NextRequest) {
     .eq('org_id', orgId)
     .single()
 
+  const rate = await getUsdRate()
+  const amountUah = usdToUah(PLANS_USD[plan].usd, rate)
+
   await db.from('payment_history').insert({
     org_id:             orgId,
     subscription_id:    sub?.id ?? null,
     plan,
-    amount:             PLANS[plan].amount,
-    currency:           PLANS[plan].currency,
+    amount:             amountUah,
+    currency:           'UAH',
     status:             'pending',
     wayforpay_order_id: orderId,
     is_recurring:       false,
   })
 
-  const params = buildPaymentParams(plan, orderId, returnUrl, serviceUrl)
+  const params = buildPaymentParams(plan, orderId, returnUrl, serviceUrl, amountUah)
 
   return NextResponse.json({ payUrl: getPayUrl(), params })
 }

@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase'
 import { requireOrgId } from '@/lib/org'
+import { getUsdRate, usdToUah } from '@/lib/exchange-rate'
+import { PLANS_USD } from '@/lib/wayforpay'
 import PayButton from './PayButton'
 
 const statusLabel: Record<string, { text: string; color: string }> = {
@@ -7,11 +9,6 @@ const statusLabel: Record<string, { text: string; color: string }> = {
   trial:     { text: 'Пробний',     color: 'bg-blue-100 text-blue-700'   },
   expired:   { text: 'Прострочено', color: 'bg-red-100 text-red-700'     },
   cancelled: { text: 'Скасовано',   color: 'bg-gray-100 text-gray-500'   },
-}
-
-const planLabel: Record<string, string> = {
-  monthly: 'Місячна (650 грн/міс)',
-  annual:  'Річна (4200 грн/рік)',
 }
 
 export default async function BillingPage({
@@ -23,7 +20,7 @@ export default async function BillingPage({
   const supabase = await createClient()
   const orgId = requireOrgId()
 
-  const [{ data: sub }, { data: payments }] = await Promise.all([
+  const [{ data: sub }, { data: payments }, rate] = await Promise.all([
     supabase
       .from('subscriptions')
       .select('*')
@@ -35,7 +32,16 @@ export default async function BillingPage({
       .eq('org_id', orgId)
       .order('created_at', { ascending: false })
       .limit(20),
+    getUsdRate(),
   ])
+
+  const monthlyUah = usdToUah(PLANS_USD.monthly.usd, rate)
+  const annualUah  = usdToUah(PLANS_USD.annual.usd,  rate)
+
+  const planLabel: Record<string, string> = {
+    monthly: `Місячна (${monthlyUah} грн/міс)`,
+    annual:  `Річна (${annualUah} грн/рік)`,
+  }
 
   const badge = statusLabel[sub?.status ?? 'trial'] ?? statusLabel.trial
 
@@ -80,8 +86,8 @@ export default async function BillingPage({
         <PlanCard
           plan="monthly"
           title="Місячна підписка"
-          price="650 грн"
-          usdHint="~$15"
+          price={`${monthlyUah} грн`}
+          usdHint={`$${PLANS_USD.monthly.usd} · курс ${rate.toFixed(1)} грн/$`}
           period="на місяць"
           description="Автопродовження кожен місяць"
           current={sub?.plan === 'monthly' && sub?.status === 'active'}
@@ -89,10 +95,10 @@ export default async function BillingPage({
         <PlanCard
           plan="annual"
           title="Річна підписка"
-          price="4200 грн"
-          usdHint="~$100"
+          price={`${annualUah} грн`}
+          usdHint={`$${PLANS_USD.annual.usd} · курс ${rate.toFixed(1)} грн/$`}
           period="на рік"
-          description="Економія 1600 грн порівняно з місячною"
+          description={`Економія ${monthlyUah * 12 - annualUah} грн порівняно з місячною`}
           current={sub?.plan === 'annual' && sub?.status === 'active'}
           highlight
         />

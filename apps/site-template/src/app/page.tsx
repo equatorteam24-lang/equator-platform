@@ -5,9 +5,28 @@ import { createClient } from '@/lib/supabase'
 import { ORG_ID } from '@/lib/org'
 import { DEFAULT_CONTENT, mergeWithDefaults } from '@/lib/content'
 
-export const metadata: Metadata = {
-  title: 'Roofing Work — Професійні покрівельні роботи',
-  description: 'Фальцева покрівля, металочерепиця, профнастил — монтаж під ключ в Івано-Франківській та Львівській областях.',
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('site_content')
+      .select('content')
+      .eq('org_id', ORG_ID)
+      .eq('section', 'seo')
+      .single()
+    const seo = (data?.content ?? {}) as Record<string, string>
+    return {
+      title:       seo.meta_title       || 'Roofing Work — Професійні покрівельні роботи',
+      description: seo.meta_description || 'Фальцева покрівля, металочерепиця, профнастил — монтаж під ключ в Івано-Франківській та Львівській областях.',
+      openGraph:   seo.og_image ? { images: [seo.og_image] } : undefined,
+      robots:      seo.no_index ? 'noindex' : undefined,
+    }
+  } catch {
+    return {
+      title:       'Roofing Work — Професійні покрівельні роботи',
+      description: 'Фальцева покрівля, металочерепиця, профнастил — монтаж під ключ в Івано-Франківській та Львівській областях.',
+    }
+  }
 }
 
 const LOGO_TOP  = 'https://dlsauceqpbkweuzxuvfc.supabase.co/storage/v1/object/public/media/roofing-work/assets/logo-top.svg'

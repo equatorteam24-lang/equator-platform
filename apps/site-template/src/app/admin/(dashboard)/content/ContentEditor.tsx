@@ -18,9 +18,15 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-interface Props { initialContent: SiteContent }
+type ExtraPage = { id: string; title: string; slug: string }
 
-export default function ContentEditor({ initialContent }: Props) {
+interface Props {
+  initialContent: SiteContent
+  extraPages:     ExtraPage[]
+}
+
+export default function ContentEditor({ initialContent, extraPages }: Props) {
+  const [activePage, setActivePage] = useState<string>('homepage')
   const [tab, setTab]       = useState<TabId>('hero')
   const [data, setData]     = useState<SiteContent>(initialContent)
   const [saving, setSaving] = useState(false)
@@ -47,11 +53,52 @@ export default function ContentEditor({ initialContent }: Props) {
   }
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-6xl flex gap-6">
+      {/* Page selector sidebar */}
+      <div className="w-48 flex-shrink-0 self-start">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2 px-1">Сторінки</p>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setActivePage('homepage')}
+            className={`w-full text-left px-4 py-3 text-sm border-b border-gray-100 transition-colors ${
+              activePage === 'homepage'
+                ? 'bg-blue-50 text-blue-700 font-medium'
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}>
+            <p className="font-medium">Головна</p>
+            <p className="text-xs text-gray-400 font-mono">/</p>
+          </button>
+          {extraPages.map(p => (
+            <button key={p.id}
+              onClick={() => setActivePage(p.id)}
+              className={`w-full text-left px-4 py-3 text-sm border-b border-gray-100 last:border-0 transition-colors ${
+                activePage === p.id
+                  ? 'bg-blue-50 text-blue-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}>
+              <p className="font-medium truncate">{p.title}</p>
+              <p className="text-xs text-gray-400 font-mono truncate">{p.slug}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main editor */}
+      <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">Редактор контенту</h1>
         {saved && <span className="text-sm text-green-600 font-medium">Збережено ✓</span>}
       </div>
+
+      {/* Non-homepage placeholder */}
+      {activePage !== 'homepage' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400">
+          <p className="text-sm">Редагування цієї сторінки буде доступне незабаром.</p>
+          <p className="text-xs mt-1">SEO налаштування — у розділі <a href="/admin/seo" className="text-blue-600 underline">SEO</a></p>
+        </div>
+      )}
+
+      {activePage === 'homepage' && (<>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-8 border-b border-gray-200 flex-wrap">
@@ -332,6 +379,8 @@ export default function ContentEditor({ initialContent }: Props) {
           </Field>
         </Section>
       )}
+      </>)}
+      </div>
     </div>
   )
 

@@ -3,14 +3,21 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
-import type { Page, PageSeo } from '@equator/db/types'
+import type { PageSeo } from '@equator/db/types'
 
-type PageRow = Pick<Page, 'id' | 'title' | 'slug' | 'seo' | 'status'>
+type PageRow = {
+  id:          string
+  title:       string
+  slug:        string
+  seo:         PageSeo
+  status:      string
+  isHomepage?: boolean
+}
 
 export default function SeoEditor({ pages }: { pages: PageRow[] }) {
   const router = useRouter()
-  const [selected, setSelected] = useState<PageRow | null>(pages[0] ?? null)
-  const [seo, setSeo] = useState<PageSeo>(selected?.seo ?? {})
+  const [selected, setSelected] = useState<PageRow>(pages[0])
+  const [seo, setSeo] = useState<PageSeo>(pages[0]?.seo ?? {})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -21,10 +28,20 @@ export default function SeoEditor({ pages }: { pages: PageRow[] }) {
   }
 
   async function save() {
-    if (!selected) return
     setSaving(true)
-    const supabase = createClient()
-    await supabase.from('pages').update({ seo }).eq('id', selected.id)
+
+    if (selected.isHomepage) {
+      // Save to site_content section='seo'
+      await fetch('/api/content', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ section: 'seo', content: seo }),
+      })
+    } else {
+      const supabase = createClient()
+      await supabase.from('pages').update({ seo }).eq('id', selected.id)
+    }
+
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -41,13 +58,14 @@ export default function SeoEditor({ pages }: { pages: PageRow[] }) {
         {pages.map(page => (
           <button key={page.id} onClick={() => selectPage(page)}
             className={`w-full text-left px-4 py-3 text-sm border-b border-gray-100 last:border-0 transition-colors ${
-              selected?.id === page.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'
+              selected?.id === page.id
+                ? 'bg-blue-50 text-blue-700 font-medium'
+                : 'text-gray-700 hover:bg-gray-50'
             }`}>
             <p className="font-medium truncate">{page.title}</p>
             <p className="text-xs text-gray-400 font-mono">{page.slug}</p>
           </button>
         ))}
-        {!pages.length && <p className="px-4 py-6 text-sm text-gray-400">Сторінок немає</p>}
       </div>
 
       {/* SEO form */}
@@ -106,7 +124,7 @@ export default function SeoEditor({ pages }: { pages: PageRow[] }) {
               {seo.meta_title || selected.title}
             </p>
             <p className="text-green-700 text-xs mt-0.5">
-              {`example.com${selected.slug}`}
+              {`example.com${selected.slug === '/' ? '' : selected.slug}`}
             </p>
             <p className="text-gray-600 text-sm mt-1 line-clamp-2">
               {seo.meta_description || 'Опис сторінки відсутній...'}

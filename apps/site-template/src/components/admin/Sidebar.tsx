@@ -10,6 +10,7 @@ const nav = [
   { href: '/admin/content',   label: 'Контент сайту',icon: '🖊' },
   { href: '/admin/pages',     label: 'Сторінки',     icon: '📄' },
   { href: '/admin/seo',       label: 'SEO',          icon: '🔍' },
+  { href: '/admin/billing',   label: 'Підписка',     icon: '💳' },
   { href: '/admin/settings',  label: 'Налаштування', icon: '⚙' },
 ]
 

@@ -83,28 +83,29 @@ export default async function HomePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {c.services.items.map((service) => (
-                <div key={service.title} className="bg-white rounded-[24px] p-5 flex flex-col gap-5 shadow-[0px_4px_20px_0px_#e9e9e9]">
-                  <div className="flex flex-col gap-1">
-                    <p className="font-body font-medium text-base text-[#090909] leading-[1.2]">{service.title}</p>
-                    <p className="font-body font-medium text-sm text-[#fe4f18] leading-[1.4]">{service.price}</p>
+                <div key={service.title} className="rounded-[20px] overflow-hidden relative group cursor-pointer">
+                  <div className="aspect-[3/4]">
+                    {service.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={service.image} alt={service.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    )}
                   </div>
-                  {service.image && (
-                    <div className="rounded-[20px] overflow-hidden h-[200px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
-                    </div>
-                  )}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <p className="font-body font-medium text-base text-white leading-[1.2]">{service.title}</p>
+                    <p className="font-body text-sm text-[#fe4f18] leading-[1.4] mt-1">{service.price}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ─── MAIN DIRECTION ─── */}
+        {/* ─── ОСНОВНИЙ НАПРЯМОК ─── */}
         <section id="about" className="py-20 md:py-24 px-5 bg-white">
           <div className="max-w-[1160px] mx-auto">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-14">
-              <h2 className="font-heading font-medium text-5xl md:text-[70px] text-[#090909] uppercase leading-[1.15]">
+            {/* Top: big heading left + intro text right */}
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-14">
+              <h2 className="font-heading font-medium text-5xl md:text-[70px] text-[#090909] uppercase leading-[1.15] max-w-[560px]">
                 {c.about.heading}
               </h2>
               <p className="text-[#9c9c9c] font-body text-base leading-[1.5] max-w-[440px] md:pt-4">
@@ -112,8 +113,9 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-10 mb-14">
-              <div className="flex flex-col gap-5 max-w-[500px]">
+            {/* Middle: subheading + description + buttons LEFT | photo RIGHT */}
+            <div className="flex flex-col lg:flex-row gap-10 mb-14 items-start">
+              <div className="flex flex-col gap-5 flex-1 max-w-[500px]">
                 <span className="inline-block bg-[#f4f5f9] text-[#999] text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] w-fit">
                   Наш досвід
                 </span>
@@ -129,19 +131,23 @@ export default async function HomePage() {
                     ))}
                   </ul>
                 )}
+                {/* Buttons always visible */}
+                <div className="flex items-center gap-4 mt-2 flex-wrap">
+                  <CTAButton>Розрахувати вартість</CTAButton>
+                  <CTAButton variant="outline" className="border border-[#e5e5e5]">Результати роботи</CTAButton>
+                </div>
               </div>
+
+              {/* Photo right */}
               {c.about.photo && (
-                <div className="lg:ml-auto rounded-[20px] overflow-hidden w-full lg:w-[520px] h-[300px] flex-shrink-0">
+                <div className="lg:ml-auto rounded-[20px] overflow-hidden w-full lg:w-[520px] h-[320px] lg:h-[380px] flex-shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={c.about.photo} alt={c.about.subheading} className="w-full h-full object-cover" />
                 </div>
               )}
-              <div className={`flex items-center gap-4 mt-2 lg:mt-auto flex-wrap ${c.about.photo ? 'hidden' : ''}`}>
-                <CTAButton>Розрахувати вартість</CTAButton>
-                <CTAButton variant="outline" className="border border-[#e5e5e5]">Результати роботи</CTAButton>
-              </div>
             </div>
 
+            {/* Bottom: 4 feature cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {c.about.features.map((f, i) => (
                 <div key={f.title} className="bg-[#f4f5f9] rounded-[12px] p-6 flex flex-col gap-4">
@@ -158,24 +164,23 @@ export default async function HomePage() {
 
         {/* ─── WORK WITH US ─── */}
         <section id="works" className="bg-[#0d0d0d] rounded-t-[44px] overflow-hidden">
-          <div className="relative h-[300px] md:h-[440px] lg:h-[560px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={c.process.heroImage || DEFAULT_CONTENT.process.heroImage} alt="Роботи на об'єктах" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/40" />
-          </div>
-
           <div className="px-5 py-16 md:py-20">
             <div className="max-w-[1160px] mx-auto">
               <h2 className="font-heading font-medium text-4xl md:text-[56px] text-white uppercase leading-[1.2] mb-12">
                 Робота з нами
               </h2>
-              <div className="mb-16">
-                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] mb-6">
+
+              {/* 4 numbered step cards */}
+              <div className="mb-12">
+                <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.04em] px-2 py-1.5 rounded-[2px] mb-4">
                   Етапи роботи
                 </span>
+                <h3 className="font-heading font-semibold text-2xl md:text-3xl text-white mb-8">
+                  Як проходить співпраця
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {c.process.steps.map((step, i) => (
-                    <div key={step.title} className="bg-white/8 border border-white/10 rounded-[12px] p-6">
+                    <div key={step.title} className="border border-white/10 rounded-[12px] p-6" style={{background: 'rgba(255,255,255,0.05)'}}>
                       <p className="font-heading font-semibold text-[#fe4f18] text-lg mb-3">
                         {String(i + 1).padStart(2, '0')}
                       </p>
@@ -184,6 +189,12 @@ export default async function HomePage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Hero image — after steps, before gallery (per Figma) */}
+              <div className="rounded-[20px] overflow-hidden mb-12 h-[280px] md:h-[420px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.process.heroImage || DEFAULT_CONTENT.process.heroImage} alt="Роботи на об'єктах" className="w-full h-full object-cover" />
               </div>
 
               {/* Gallery */}
@@ -259,6 +270,7 @@ export default async function HomePage() {
               )}
             </div>
 
+            {/* 5 trust cards, second is orange per Figma */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {c.trust.items.map((item) => (
                 <div key={item.label} className={`rounded-[8px] p-6 h-[120px] flex items-center ${item.active ? 'bg-[#fe4f18]' : 'bg-[#f4f5f9]'}`}>
@@ -270,7 +282,7 @@ export default async function HomePage() {
             </div>
 
             {/* About company */}
-            <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start" id="military">
+            <div className="flex flex-col lg:flex-row gap-10 lg:gap-16 items-start">
               {c.trust.aboutPhoto && (
                 <div className="relative rounded-[20px] overflow-hidden w-full lg:w-[500px] h-[380px] lg:h-[460px] flex-shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -317,6 +329,7 @@ export default async function HomePage() {
         </section>
 
         {/* ─── CTA BANNER ─── */}
+        {/* Figma: heading LEFT + description + button RIGHT */}
         <section className="relative overflow-hidden rounded-t-[44px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={c.cta.bgImage || DEFAULT_CONTENT.cta.bgImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -373,7 +386,7 @@ export default async function HomePage() {
                 </a>
               </div>
 
-              <div className="flex flex-col gap-5" id="military">
+              <div className="flex flex-col gap-5">
                 <span className="inline-block bg-white/10 text-white/60 text-xs font-body font-semibold uppercase tracking-[0.06em] px-2 py-1.5 rounded-[2px] w-fit">
                   Підтримуємо військових
                 </span>

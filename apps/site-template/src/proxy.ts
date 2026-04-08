@@ -27,6 +27,9 @@ export default async function proxy(request: NextRequest) {
   // Refresh session — keeps cookies alive after external redirects (e.g. WayForPay)
   await supabase.auth.getUser()
 
+  // Pass pathname to server components via header
+  supabaseResponse.headers.set('x-pathname', request.nextUrl.pathname)
+
   return supabaseResponse
 }
 

@@ -3,6 +3,7 @@ import { requireOrgId } from '@/lib/org'
 import { getUsdRate, usdToUah } from '@/lib/exchange-rate'
 import { PLANS_USD } from '@/lib/wayforpay'
 import PayButton from './PayButton'
+import CancelButton from './CancelButton'
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   active:    { text: 'Активна',     color: 'bg-green-100 text-green-700' },
@@ -79,6 +80,11 @@ export default async function BillingPage({
             {badge.text}
           </span>
         </div>
+        {sub?.status === 'active' && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <CancelButton />
+          </div>
+        )}
       </div>
 
       {/* Plan selection */}

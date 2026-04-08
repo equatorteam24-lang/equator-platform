@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const orderId = `${orgId.slice(0, 8)}-${randomUUID().slice(0, 8)}-${Date.now()}`
 
   const origin = req.headers.get('origin') ?? `https://${process.env.WAYFORPAY_MERCHANT_DOMAIN}`
-  const returnUrl  = `${origin}/admin/billing?status=done`
+  const returnUrl  = `${origin}/api/billing/return`
   const serviceUrl = `${origin}/api/billing/webhook`
 
   // Save pending payment record

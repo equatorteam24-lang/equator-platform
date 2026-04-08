@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/service'
-import { chargeRecurring, type Plan } from '@/lib/wayforpay'
+import { chargeRecurring, PLANS_USD, type Plan } from '@/lib/wayforpay'
+import { getUsdRate, usdToUah } from '@/lib/exchange-rate'
 import { randomUUID } from 'crypto'
 
 // Called daily by Vercel Cron: 0 9 * * *
@@ -34,7 +35,9 @@ export async function GET(req: NextRequest) {
     const orderId = `rec-${sub.org_id.slice(0, 8)}-${randomUUID().slice(0, 8)}-${Date.now()}`
     const plan = sub.plan as Plan
 
-    const result = await chargeRecurring(sub.rec_token, orderId, plan)
+    const rate = await getUsdRate()
+    const amountUah = usdToUah(PLANS_USD[plan].usd, rate)
+    const result = await chargeRecurring(sub.rec_token, orderId, plan, amountUah)
 
     if (result.success) {
       const now = new Date()

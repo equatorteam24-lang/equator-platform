@@ -1,14 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const isAdminRoute = pathname.startsWith('/admin')
-  const isLoginRoute = pathname.startsWith('/admin/login')
-
-  if (!isAdminRoute) return NextResponse.next({ request })
-
-  let response = NextResponse.next({ request })
+export default async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,29 +10,27 @@ export async function proxy(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet: any[]) => { // eslint-disable-line
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options)
           )
         },
       },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Refresh session — keeps cookies alive after external redirects (e.g. WayForPay)
+  await supabase.auth.getUser()
 
-  if (!user && !isLoginRoute) {
-    return NextResponse.redirect(new URL('/admin/login', request.url))
-  }
-  if (user && isLoginRoute) {
-    return NextResponse.redirect(new URL('/admin', request.url))
-  }
-
-  return response
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter=@equator/site-template run build",
-  "outputDirectory": "apps/site-template/.next"
+  "buildCommand": "pnpm --filter=@equator/platform run build",
+  "outputDirectory": "apps/platform/.next"
 }

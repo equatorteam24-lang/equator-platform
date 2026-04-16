@@ -101,13 +101,13 @@ equator-platform/
 
 ---
 
-## Структура монорепо (поточний стан, до міграції)
+## Структура монорепо
 
 ```
 equator-platform/
 ├── apps/
 │   ├── super-admin/        # admin.equator.agency — тільки для нас
-│   └── site-template/      # [LEGACY] шаблон під Модель 1 — буде перенесено в platform/
+│   └── platform/           # всі клієнтські сайти в одному Next.js app
 ├── packages/
 │   ├── db/                 # Supabase типи, client, server клієнти
 │   ├── ui/                 # Shared UI компоненти (Hero, Navbar, Forms тощо)

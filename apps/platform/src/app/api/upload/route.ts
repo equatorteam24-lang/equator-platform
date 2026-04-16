@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 
 export async function POST(req: NextRequest) {
   const authClient = await createClient()
@@ -12,8 +12,9 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
+  const orgId    = await getCurrentOrgId()
   const ext      = file.name.split('.').pop() ?? 'jpg'
-  const fileName = `${ORG_ID}/${Date.now()}.${ext}`
+  const fileName = `${orgId}/${Date.now()}.${ext}`
   const buffer   = await file.arrayBuffer()
 
   const supabase = createServiceClient()

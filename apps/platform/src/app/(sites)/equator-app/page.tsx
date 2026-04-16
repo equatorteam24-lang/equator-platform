@@ -2,16 +2,17 @@ import type { Metadata } from 'next'
 import Navbar from '@/components/Navbar'
 import CTAButton from '@/components/CTAButton'
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import { DEFAULT_CONTENT, mergeWithDefaults } from '@/lib/content'
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
+    const orgId = await getCurrentOrgId()
     const supabase = await createClient()
     const { data } = await supabase
       .from('site_content')
       .select('content')
-      .eq('org_id', ORG_ID)
+      .eq('org_id', orgId)
       .eq('section', 'seo')
       .single()
     const seo = (data?.content ?? {}) as Record<string, string>
@@ -42,11 +43,12 @@ const FEATURE_ICONS = [
 
 async function getSiteContent() {
   try {
+    const orgId = await getCurrentOrgId()
     const supabase = await createClient()
     const { data } = await supabase
       .from('site_content')
       .select('section, content')
-      .eq('org_id', ORG_ID)
+      .eq('org_id', orgId)
 
     const dbMap: Record<string, unknown> = {}
     for (const row of data ?? []) dbMap[row.section] = row.content

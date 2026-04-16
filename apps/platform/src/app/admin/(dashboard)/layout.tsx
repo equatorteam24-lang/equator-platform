@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import AdminSidebar from '@/components/admin/Sidebar'
 
 export default async function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +8,8 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/admin/login')
 
-  // Verify user belongs to this org
+  // Verify user belongs to the org bound to the current host
+  const orgId = await getCurrentOrgId()
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, org_id')
@@ -16,7 +17,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
     .single()
 
   const isSuperadmin = profile?.role === 'superadmin'
-  const isOrgMember  = profile?.org_id === ORG_ID
+  const isOrgMember  = profile?.org_id === orgId
 
   if (!isSuperadmin && !isOrgMember) {
     await supabase.auth.signOut()

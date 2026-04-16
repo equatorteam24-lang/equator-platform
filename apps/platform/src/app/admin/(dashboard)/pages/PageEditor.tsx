@@ -5,9 +5,7 @@ import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
 import type { Page } from '@equator/db/types'
 
-const ORG_ID = process.env.NEXT_PUBLIC_ORG_ID!
-
-export default function PageEditor({ page }: { page?: Page }) {
+export default function PageEditor({ page, orgId }: { page?: Page; orgId: string }) {
   const router = useRouter()
   const isNew = !page
 
@@ -29,7 +27,7 @@ export default function PageEditor({ page }: { page?: Page }) {
 
     if (isNew) {
       const { data } = await supabase.from('pages').insert({
-        org_id:  ORG_ID,
+        org_id:  orgId,
         title,
         slug,
         status,

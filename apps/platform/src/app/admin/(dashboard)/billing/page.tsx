@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase'
-import { requireOrgId } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import { getUsdRate, usdToUah } from '@/lib/exchange-rate'
 import { PLANS_USD } from '@/lib/wayforpay'
 import PayButton from './PayButton'
@@ -19,7 +19,7 @@ export default async function BillingPage({
 }) {
   const { status: qStatus } = await searchParams
   const supabase = await createClient()
-  const orgId = requireOrgId()
+  const orgId = await getCurrentOrgId()
 
   const [{ data: sub }, { data: payments }, rate] = await Promise.all([
     supabase

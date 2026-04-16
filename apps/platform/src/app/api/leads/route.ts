@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/service'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireOrgId } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 
 // Rate limiting: max 5 submissions per IP per hour (in-memory, resets on redeploy)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   const utmMedium    = url.searchParams.get('utm_medium')   ?? String(body.utm_medium   ?? '')
   const utmCampaign  = url.searchParams.get('utm_campaign') ?? String(body.utm_campaign ?? '')
 
-  const orgId  = requireOrgId()
+  const orgId  = await getCurrentOrgId()
   const db     = createServiceClient()
 
   // Insert lead + fetch org settings in parallel

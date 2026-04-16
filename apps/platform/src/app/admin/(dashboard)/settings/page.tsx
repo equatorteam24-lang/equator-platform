@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import SettingsForm from './SettingsForm'
 
 export default async function SettingsPage() {
+  const orgId = await getCurrentOrgId()
   const supabase = await createClient()
   const { data: org } = await supabase
     .from('organizations')
     .select('*')
-    .eq('id', ORG_ID)
+    .eq('id', orgId)
     .single()
 
   return (

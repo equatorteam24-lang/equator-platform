@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase'
 import { createServiceClient } from '@/lib/service'
-import { requireOrgId } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import { buildPaymentParams, getPayUrl, PLANS_USD, type Plan } from '@/lib/wayforpay'
 import { getUsdRate, usdToUah } from '@/lib/exchange-rate'
 import { randomUUID } from 'crypto'
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
   }
 
-  const orgId = requireOrgId()
+  const orgId = await getCurrentOrgId()
   const orderId = `${orgId.slice(0, 8)}-${randomUUID().slice(0, 8)}-${Date.now()}`
 
   const origin = req.headers.get('origin') ?? `https://${process.env.WAYFORPAY_MERCHANT_DOMAIN}`

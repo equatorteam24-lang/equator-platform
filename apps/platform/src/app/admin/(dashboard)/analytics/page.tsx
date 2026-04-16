@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase'
-import { requireOrgId } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -28,8 +28,8 @@ const DAYS_30 = 30
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default async function AnalyticsPage() {
+  const orgId = await getCurrentOrgId()
   const supabase = await createClient()
-  const orgId = requireOrgId()
 
   const since = new Date(Date.now() - DAYS_30 * 24 * 60 * 60 * 1000).toISOString()
 

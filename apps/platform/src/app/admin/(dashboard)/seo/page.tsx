@@ -1,21 +1,22 @@
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import SeoEditor from './SeoEditor'
 import type { PageSeo } from '@equator/db/types'
 
 export default async function SeoPage() {
+  const orgId = await getCurrentOrgId()
   const supabase = await createClient()
 
   const [{ data: pages }, { data: homeRow }] = await Promise.all([
     supabase
       .from('pages')
       .select('id, title, slug, seo, status')
-      .eq('org_id', ORG_ID)
+      .eq('org_id', orgId)
       .order('created_at'),
     supabase
       .from('site_content')
       .select('content')
-      .eq('org_id', ORG_ID)
+      .eq('org_id', orgId)
       .eq('section', 'seo')
       .single(),
   ])

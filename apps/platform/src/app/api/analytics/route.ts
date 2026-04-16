@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/service'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireOrgId } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>
@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
 
   const country = req.headers.get('cf-ipcountry') ?? req.headers.get('x-vercel-ip-country') ?? null
 
+  const orgId    = await getCurrentOrgId()
   const supabase = createServiceClient()
   const { error } = await supabase.from('analytics_events').insert({
-    org_id:       requireOrgId(),
+    org_id:       orgId,
     session_id:   sessionId,
     visitor_id:   visitorId || null,
     event,

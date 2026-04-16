@@ -6,7 +6,7 @@ import ThirdPartyScripts from '@/components/ThirdPartyScripts'
 import ModalProvider from '@/components/ModalProvider'
 import { createClient } from '@/lib/supabase'
 import { createServiceClient } from '@/lib/service'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import type { OrganizationSettings } from '@equator/db/types'
 import './globals.css'
 
@@ -29,13 +29,13 @@ export const metadata: Metadata = {
   openGraph: { type: 'website' },
 }
 
-async function getOrgSettings(): Promise<OrganizationSettings> {
+async function getOrgSettings(orgId: string): Promise<OrganizationSettings> {
   try {
     const supabase = await createClient()
     const { data } = await supabase
       .from('organizations')
       .select('settings')
-      .eq('id', ORG_ID)
+      .eq('id', orgId)
       .single()
     return (data?.settings as OrganizationSettings) ?? {}
   } catch {
@@ -43,13 +43,13 @@ async function getOrgSettings(): Promise<OrganizationSettings> {
   }
 }
 
-async function getSubscriptionStatus(): Promise<'active' | 'trial' | 'expired' | 'cancelled'> {
+async function getSubscriptionStatus(orgId: string): Promise<'active' | 'trial' | 'expired' | 'cancelled'> {
   try {
     const db = createServiceClient()
     const { data } = await db
       .from('subscriptions')
       .select('status, trial_ends_at')
-      .eq('org_id', ORG_ID)
+      .eq('org_id', orgId)
       .single()
     if (!data) return 'active' // no subscription record = allow access
     if (data.status === 'trial' && data.trial_ends_at) {
@@ -66,9 +66,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const pathname = headersList.get('x-pathname') ?? ''
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/api')
 
+  // Resolve org from Host. If host is unknown (e.g., a preview URL without a
+  // client domain yet), fall back to a minimal shell without org-scoped data.
+  let orgId: string | null = null
+  try {
+    orgId = await getCurrentOrgId()
+  } catch {
+    orgId = null
+  }
+
   const [settings, subStatus] = await Promise.all([
-    getOrgSettings(),
-    isAdminRoute ? Promise.resolve('active' as const) : getSubscriptionStatus(),
+    orgId ? getOrgSettings(orgId) : Promise.resolve({} as OrganizationSettings),
+    orgId && !isAdminRoute ? getSubscriptionStatus(orgId) : Promise.resolve('active' as const),
   ])
 
   const isBlocked = !isAdminRoute && (subStatus === 'expired' || subStatus === 'cancelled')

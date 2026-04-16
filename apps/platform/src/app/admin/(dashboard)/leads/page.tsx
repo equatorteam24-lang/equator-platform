@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import LeadsTable from './LeadsTable'
 
 export default async function LeadsPage({
@@ -8,12 +8,13 @@ export default async function LeadsPage({
   searchParams: Promise<{ status?: string; q?: string }>
 }) {
   const { status, q } = await searchParams
+  const orgId = await getCurrentOrgId()
   const supabase = await createClient()
 
   let query = supabase
     .from('leads')
     .select('*')
-    .eq('org_id', ORG_ID)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
 
   if (status && status !== 'all') query = query.eq('status', status)

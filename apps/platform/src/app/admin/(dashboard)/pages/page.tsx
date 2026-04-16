@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 import Link from 'next/link'
 
 export default async function PagesPage() {
+  const orgId = await getCurrentOrgId()
   const supabase = await createClient()
   const { data: pages } = await supabase
     .from('pages')
     .select('id, slug, title, status, updated_at')
-    .eq('org_id', ORG_ID)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
 
   return (

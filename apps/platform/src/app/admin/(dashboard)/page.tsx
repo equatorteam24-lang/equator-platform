@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase'
-import { ORG_ID } from '@/lib/org'
+import { getCurrentOrgId } from '@/lib/org'
 
 export default async function AdminDashboardPage() {
+  const orgId = await getCurrentOrgId()
   const supabase = await createClient()
   const today = new Date()
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString()
@@ -12,12 +13,12 @@ export default async function AdminDashboardPage() {
     { count: monthVisits },
     { data: recentLeads },
   ] = await Promise.all([
-    supabase.from('leads').select('*', { count: 'exact', head: true }).eq('org_id', ORG_ID),
-    supabase.from('leads').select('*', { count: 'exact', head: true }).eq('org_id', ORG_ID).eq('status', 'new'),
+    supabase.from('leads').select('*', { count: 'exact', head: true }).eq('org_id', orgId),
+    supabase.from('leads').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'new'),
     supabase.from('analytics_events').select('*', { count: 'exact', head: true })
-      .eq('org_id', ORG_ID).eq('event', 'pageview').gte('created_at', monthStart),
+      .eq('org_id', orgId).eq('event', 'pageview').gte('created_at', monthStart),
     supabase.from('leads').select('name, email, phone, status, created_at, source_page')
-      .eq('org_id', ORG_ID).order('created_at', { ascending: false }).limit(5),
+      .eq('org_id', orgId).order('created_at', { ascending: false }).limit(5),
   ])
 
   return (

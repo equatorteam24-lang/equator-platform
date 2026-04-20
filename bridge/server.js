@@ -171,8 +171,9 @@ async function handleGenerateSite(req, res) {
   // Run in background
   ;(async () => {
     try {
-      // Step 1: Generate site
-      const output = await runClaude(prompt, {
+      // Step 1: Generate site using premium-web-design skill
+      const skillPrompt = `/premium-web-design\n\n${prompt}`
+      const output = await runClaude(skillPrompt, {
         cwd: projectDir,
         maxTurns: 30,
         timeout: 900000, // 15 min

@@ -63,6 +63,9 @@ importers:
       '@anthropic-ai/claude-agent-sdk':
         specifier: ^0.2.114
         version: 0.2.114(zod@4.3.6)
+      '@anthropic-ai/sdk':
+        specifier: ^0.90.0
+        version: 0.90.0(zod@4.3.6)
       '@equator/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -180,6 +183,15 @@ packages:
 
   '@anthropic-ai/sdk@0.81.0':
     resolution: {integrity: sha512-D4K5PvEV6wPiRtVlVsJHIUhHAmOZ6IT/I9rKlTf84gR7GyyAurPJK7z9BOf/AZqC5d1DhYQGJNKRmV+q8dGhgw==}
+    hasBin: true
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  '@anthropic-ai/sdk@0.90.0':
+    resolution: {integrity: sha512-MzZtPabJF1b0FTDl6Z6H5ljphPwACLGP13lu8MTiB8jXaW/YXlpOp+Po2cVou3MPM5+f5toyLnul9whKCy7fBg==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -2449,6 +2461,12 @@ snapshots:
       - supports-color
 
   '@anthropic-ai/sdk@0.81.0(zod@4.3.6)':
+    dependencies:
+      json-schema-to-ts: 3.1.1
+    optionalDependencies:
+      zod: 4.3.6
+
+  '@anthropic-ai/sdk@0.90.0(zod@4.3.6)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:

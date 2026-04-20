@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const SITE_TYPES = [
@@ -22,26 +22,16 @@ const STYLES = [
   { value: 'premium', label: 'Преміум (Awwwards-рівень)' },
 ]
 
-const FEATURES = [
-  { key: 'contactForm', label: 'Форма зворотнього зв\'язку' },
-  { key: 'gallery', label: 'Галерея / портфоліо' },
-  { key: 'reviews', label: 'Відгуки клієнтів' },
-  { key: 'map', label: 'Google Карта' },
-  { key: 'chatWidget', label: 'Чат-віджет' },
-  { key: 'calculator', label: 'Калькулятор / розрахунок' },
-  { key: 'faq', label: 'FAQ блок' },
-  { key: 'blog', label: 'Блог / новини' },
-]
-
-const MODELS = [
-  { value: 'claude-sonnet-4-6', label: 'Sonnet 4.6 — швидко (~5 хв)' },
-  { value: 'claude-opus-4-6', label: 'Opus 4.6 — преміум якість (~15 хв)' },
-]
-
 export default function NewSitePage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // Voice / describe
+  const [freeDescription, setFreeDescription] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [isParsing, setIsParsing] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   // Form state
   const [name, setName] = useState('')
@@ -58,76 +48,101 @@ export default function NewSitePage() {
   const [email, setEmail] = useState('')
   const [address, setAddress] = useState('')
   const [socials, setSocials] = useState('')
-  const [features, setFeatures] = useState<Record<string, boolean>>({})
   const [extraWishes, setExtraWishes] = useState('')
-  const [model, setModel] = useState('claude-sonnet-4-6')
 
-  // AI generation states
-  const [genStructure, setGenStructure] = useState(false)
-  const [genColors, setGenColors] = useState(false)
-  const [genFeatures, setGenFeatures] = useState(false)
+  // ── Voice recording (Web Speech API) ──
+  const startRecording = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setError('Ваш браузер не підтримує голосовий запис. Використайте Chrome.')
+      return
+    }
 
-  const toggleFeature = (key: string) => {
-    setFeatures(prev => ({ ...prev, [key]: !prev[key] }))
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'uk-UA'
+    recognition.interimResults = true
+    recognition.continuous = true
+
+    let finalTranscript = freeDescription
+
+    recognition.onresult = (event: any) => {
+      let interim = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += (finalTranscript ? ' ' : '') + event.results[i][0].transcript
+        } else {
+          interim += event.results[i][0].transcript
+        }
+      }
+      setFreeDescription(finalTranscript + (interim ? ' ' + interim : ''))
+    }
+
+    recognition.onerror = () => {
+      setIsRecording(false)
+    }
+
+    recognition.onend = () => {
+      setIsRecording(false)
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsRecording(true)
   }
 
-  const handleGenerateStructure = async () => {
-    setGenStructure(true)
-    try {
-      const res = await fetch('/api/sites/ai-suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'structure',
-          context: { siteType, companyName, companyDescription },
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setStructure(data.suggestion)
-      }
-    } catch {}
-    setGenStructure(false)
+  const stopRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      recognitionRef.current = null
+    }
+    setIsRecording(false)
   }
 
-  const handleGenerateColors = async () => {
-    setGenColors(true)
-    try {
-      const res = await fetch('/api/sites/ai-suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'colors',
-          context: { siteType, designStyle, companyName, companyDescription },
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.primary) setPrimaryColor(data.primary)
-        if (data.secondary) setSecondaryColor(data.secondary)
-      }
-    } catch {}
-    setGenColors(false)
-  }
+  // ── AI parse description into form fields ──
+  const handleParseDescription = async () => {
+    if (!freeDescription.trim()) {
+      setError('Спочатку опишіть проект текстом або голосом')
+      return
+    }
 
-  const handleGenerateFeatures = async () => {
-    setGenFeatures(true)
+    setIsParsing(true)
+    setError('')
+
     try {
-      const res = await fetch('/api/sites/ai-suggest', {
+      const res = await fetch('/api/sites/parse-brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'features',
-          context: { siteType, companyName, companyDescription },
-        }),
+        body: JSON.stringify({ description: freeDescription }),
       })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.features) setFeatures(data.features)
-        if (data.wishes) setExtraWishes(data.wishes)
+
+      if (!res.ok) {
+        setError('Помилка розбору. Спробуйте ще раз.')
+        setIsParsing(false)
+        return
       }
-    } catch {}
-    setGenFeatures(false)
+
+      const data = await res.json()
+
+      // Fill form fields from AI response
+      if (data.name) setName(data.name)
+      if (data.companyName) setCompanyName(data.companyName)
+      if (data.companyDescription) setCompanyDescription(data.companyDescription)
+      if (data.siteType) setSiteType(data.siteType)
+      if (data.theme) setTheme(data.theme)
+      if (data.designStyle) setDesignStyle(data.designStyle)
+      if (data.structure) setStructure(data.structure)
+      if (data.primaryColor) setPrimaryColor(data.primaryColor)
+      if (data.secondaryColor) setSecondaryColor(data.secondaryColor)
+      if (data.phone) setPhone(data.phone)
+      if (data.email) setEmail(data.email)
+      if (data.address) setAddress(data.address)
+      if (data.socials) setSocials(data.socials)
+      if (data.extraWishes) setExtraWishes(data.extraWishes)
+    } catch {
+      setError('Мережева помилка')
+    }
+
+    setIsParsing(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,9 +168,8 @@ export default function NewSitePage() {
         email,
         address,
         socials,
-        features,
         extraWishes,
-        model,
+        freeDescription,
       }
 
       const res = await fetch('/api/sites', {
@@ -182,7 +196,7 @@ export default function NewSitePage() {
   return (
     <div className="p-8 max-w-4xl">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Новий сайт</h1>
-      <p className="text-sm text-gray-500 mb-8">Заповніть бриф — агент зверстає сайт автоматично</p>
+      <p className="text-sm text-gray-500 mb-8">Опишіть проект — агент зверстає сайт автоматично</p>
 
       {error && (
         <div className="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -192,8 +206,68 @@ export default function NewSitePage() {
 
       <form onSubmit={handleSubmit} className="space-y-10">
 
-        {/* ─── 1. Основна інформація ─── */}
-        <Section title="Основна інформація" num="01">
+        {/* ─── 01. Опишіть проект ─── */}
+        <Section title="Опишіть проект своїми словами" num="01">
+          <p className="text-xs text-gray-400 -mt-2 mb-3">
+            Розкажіть все що знаєте: назва, чим займається, який дизайн хочете, кольори, структуру.
+            Можна текстом або голосом — AI розбере по полях автоматично.
+          </p>
+          <div className="relative">
+            <textarea
+              value={freeDescription}
+              onChange={e => setFreeDescription(e.target.value)}
+              rows={6}
+              placeholder={'Наприклад: Потрібен сайт для компанії "ТрансЛогістика", вони займаються вантажними перевезеннями по Україні. Дизайн повинен бути в синіх тонах, світлий, сучасний. Потрібні секції: герой з великим фото фури, про компанію, послуги (4 картки), географія перевезень з картою, відгуки клієнтів, форма зворотнього зв\'язку. Телефон: +380 44 123 45 67, email: info@translog.ua'}
+              className="input !pr-14"
+            />
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`absolute right-3 top-3 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                isRecording
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+              }`}
+              title={isRecording ? 'Зупинити запис' : 'Записати голосом'}
+            >
+              {isRecording ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                </svg>
+              )}
+            </button>
+          </div>
+          {isRecording && (
+            <p className="text-xs text-red-500 flex items-center gap-1.5 mt-1">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              Запис... Говоріть українською. Натисніть щоб зупинити.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleParseDescription}
+            disabled={isParsing || !freeDescription.trim()}
+            className="mt-3 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {isParsing ? 'Аналізую...' : 'Розібрати по полях'}
+          </button>
+        </Section>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white px-4 text-xs text-gray-400">або заповніть вручну / перевірте що AI розібрав</span>
+          </div>
+        </div>
+
+        {/* ─── 02. Основна інформація ─── */}
+        <Section title="Основна інформація" num="02">
           <Field label="Назва проекту" required>
             <input
               type="text"
@@ -203,7 +277,7 @@ export default function NewSitePage() {
               className="input"
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Field label="Тип сайту">
               <select value={siteType} onChange={e => setSiteType(e.target.value)} className="input">
                 {SITE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -214,12 +288,17 @@ export default function NewSitePage() {
                 {THEMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </Field>
+            <Field label="Стиль">
+              <select value={designStyle} onChange={e => setDesignStyle(e.target.value)} className="input">
+                {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </Field>
           </div>
         </Section>
 
-        {/* ─── 2. Структура ─── */}
-        <Section title="Структура сайту" num="02">
-          <Field label="Опишіть блоки сайту" hint="Hero, Про нас, Послуги, Галерея, Контакти і т.д.">
+        {/* ─── 03. Структура ─── */}
+        <Section title="Структура сайту" num="03">
+          <Field label="Блоки сайту" hint="Hero, Про нас, Послуги, Галерея, Контакти і т.д.">
             <textarea
               value={structure}
               onChange={e => setStructure(e.target.value)}
@@ -228,28 +307,20 @@ export default function NewSitePage() {
               className="input"
             />
           </Field>
-          <button
-            type="button"
-            onClick={handleGenerateStructure}
-            disabled={genStructure}
-            className="btn-outline"
-          >
-            {genStructure ? 'Генерую...' : '✨ Згенерувати структуру'}
-          </button>
         </Section>
 
-        {/* ─── 3. Дизайн ─── */}
-        <Section title="Дизайн" num="03">
+        {/* ─── 04. Дизайн ─── */}
+        <Section title="Дизайн" num="04">
           <Field label="Референс URL" hint="Посилання на сайти, які подобаються (кожен з нового рядка)">
             <textarea
               value={referenceUrls}
               onChange={e => setReferenceUrls(e.target.value)}
-              rows={3}
-              placeholder="https://unison.org.ua&#10;https://example.com"
+              rows={2}
+              placeholder="https://example.com"
               className="input"
             />
           </Field>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Field label="Основний колір">
               <div className="flex items-center gap-3">
                 <input
@@ -282,24 +353,11 @@ export default function NewSitePage() {
                 />
               </div>
             </Field>
-            <Field label="Стиль">
-              <select value={designStyle} onChange={e => setDesignStyle(e.target.value)} className="input">
-                {STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </Field>
           </div>
-          <button
-            type="button"
-            onClick={handleGenerateColors}
-            disabled={genColors}
-            className="btn-outline"
-          >
-            {genColors ? 'Підбираю...' : '✨ Підібрати кольори'}
-          </button>
         </Section>
 
-        {/* ─── 4. Контент ─── */}
-        <Section title="Контент" num="04">
+        {/* ─── 05. Контент ─── */}
+        <Section title="Контент та контакти" num="05">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Назва компанії" required>
               <input
@@ -349,7 +407,7 @@ export default function NewSitePage() {
               />
             </Field>
           </div>
-          <Field label="Соцмережі" hint="Посилання через кому або з нового рядка">
+          <Field label="Соцмережі">
             <textarea
               value={socials}
               onChange={e => setSocials(e.target.value)}
@@ -358,83 +416,14 @@ export default function NewSitePage() {
               className="input"
             />
           </Field>
-        </Section>
-
-        {/* ─── 5. Функціонал ─── */}
-        <Section title="Функціонал" num="05">
-          <div className="grid grid-cols-2 gap-2">
-            {FEATURES.map(f => (
-              <label
-                key={f.key}
-                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition ${
-                  features[f.key]
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!features[f.key]}
-                  onChange={() => toggleFeature(f.key)}
-                  className="sr-only"
-                />
-                <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                  features[f.key] ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                }`}>
-                  {features[f.key] && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <span className="text-sm font-medium">{f.label}</span>
-              </label>
-            ))}
-          </div>
           <Field label="Додаткові побажання">
             <textarea
               value={extraWishes}
               onChange={e => setExtraWishes(e.target.value)}
               rows={3}
-              placeholder="Наприклад: кнопка меню як в Unison, конвертик для зворотнього дзвінка..."
+              placeholder="Все що не ввійшло в інші поля: анімації, конкретні елементи, приклади..."
               className="input"
             />
-          </Field>
-          <button
-            type="button"
-            onClick={handleGenerateFeatures}
-            disabled={genFeatures}
-            className="btn-outline"
-          >
-            {genFeatures ? 'Аналізую...' : '✨ Рекомендувати функціонал'}
-          </button>
-        </Section>
-
-        {/* ─── 6. Налаштування генерації ─── */}
-        <Section title="Генерація" num="06">
-          <Field label="Модель AI">
-            <div className="space-y-2">
-              {MODELS.map(m => (
-                <label
-                  key={m.value}
-                  className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition ${
-                    model === m.value
-                      ? 'border-blue-300 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="model"
-                    value={m.value}
-                    checked={model === m.value}
-                    onChange={e => setModel(e.target.value)}
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm font-medium text-gray-700">{m.label}</span>
-                </label>
-              ))}
-            </div>
           </Field>
         </Section>
 
@@ -445,10 +434,10 @@ export default function NewSitePage() {
             disabled={saving}
             className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition"
           >
-            {saving ? 'Створюю...' : '🚀 Створити сайт'}
+            {saving ? 'Створюю...' : 'Створити сайт'}
           </button>
           <p className="text-xs text-gray-400">
-            Після натискання агент почне верстку. Орієнтовний час: 5–15 хвилин.
+            Після натискання агент почне верстку. Орієнтовний час: 5-15 хвилин.
           </p>
         </div>
       </form>
@@ -473,25 +462,6 @@ export default function NewSitePage() {
         }
         select.input {
           appearance: auto;
-        }
-        .btn-outline {
-          border-radius: 0.5rem;
-          border: 1px solid #e5e7eb;
-          padding: 0.5rem 1rem;
-          font-size: 0.8125rem;
-          font-weight: 500;
-          color: #6b7280;
-          background: white;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .btn-outline:hover:not(:disabled) {
-          border-color: #3b82f6;
-          color: #3b82f6;
-        }
-        .btn-outline:disabled {
-          opacity: 0.5;
-          cursor: wait;
         }
       `}</style>
     </div>

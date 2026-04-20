@@ -72,7 +72,9 @@ ${description}
     const parsed = JSON.parse(jsonMatch[0])
     return NextResponse.json(parsed)
   } catch (err: any) {
-    console.error('Parse brief error:', err.message)
-    return NextResponse.json({ error: 'Помилка AI аналізу' }, { status: 500 })
+    console.error('Parse brief error:', err.message, err.status, err.error)
+    return NextResponse.json({
+      error: `Помилка AI: ${err.message || 'невідома'}`,
+    }, { status: 500 })
   }
 }

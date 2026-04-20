@@ -116,7 +116,8 @@ export default function NewSitePage() {
       })
 
       if (!res.ok) {
-        setError('Помилка розбору. Спробуйте ще раз.')
+        const errData = await res.json().catch(() => ({}))
+        setError(errData.error || 'Помилка розбору. Спробуйте ще раз.')
         setIsParsing(false)
         return
       }

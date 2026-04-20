@@ -86,6 +86,9 @@ async function buildAndDeploy(jobId, projectDir, generatedCode) {
     )
     const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
     if (urlMatch) vercelUrl = urlMatch[0]
+
+    // Disable Vercel SSO protection so site is publicly accessible + embeddable in iframe
+    disableVercelProtection(projectDir)
   } catch (err) {
     console.error(`Build/deploy error for ${jobId}:`, err.message)
   }
@@ -98,6 +101,37 @@ async function buildAndDeploy(jobId, projectDir, generatedCode) {
     error: null,
   })
   console.log(`Job ${jobId} recovered → ${vercelUrl || 'no deploy URL'}`)
+}
+
+// ─── Disable Vercel SSO protection for deployed project ───
+function disableVercelProtection(projectDir) {
+  try {
+    // Read .vercel/project.json to get project ID
+    const vercelConfig = path.join(projectDir, '.vercel', 'project.json')
+    if (!fs.existsSync(vercelConfig)) return
+
+    const { projectId, orgId } = JSON.parse(fs.readFileSync(vercelConfig, 'utf-8'))
+    if (!projectId) return
+
+    // Get Vercel token from CLI auth
+    const authFile = path.join(
+      process.env.HOME || '/home/alexa',
+      '.local/share/com.vercel.cli/auth.json'
+    )
+    if (!fs.existsSync(authFile)) return
+    const { token } = JSON.parse(fs.readFileSync(authFile, 'utf-8'))
+    if (!token) return
+
+    // Disable SSO protection via API
+    const url = `https://api.vercel.com/v9/projects/${projectId}${orgId ? `?teamId=${orgId}` : ''}`
+    execSync(`curl -s -X PATCH "${url}" -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" -d '{"ssoProtection":null}'`, {
+      timeout: 10000,
+      stdio: 'pipe',
+    })
+    console.log(`SSO protection disabled for project ${projectId}`)
+  } catch (err) {
+    console.error('Failed to disable SSO protection:', err.message)
+  }
 }
 
 // ─── Utils ───
@@ -215,6 +249,20 @@ async function handleGenerateSite(req, res) {
 
   fs.writeFileSync(path.join(projectDir, 'vite.config.js'),
     `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nexport default defineConfig({ plugins: [react()] })\n`)
+
+  // Vercel config: disable SSO protection + allow iframe embedding
+  fs.writeFileSync(path.join(projectDir, 'vercel.json'), JSON.stringify({
+    headers: [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+          { key: "Content-Security-Policy", value: "frame-ancestors *" }
+        ]
+      }
+    ],
+    oidcTokenConfig: { enabled: false }
+  }, null, 2))
 
   fs.writeFileSync(path.join(projectDir, 'index.html'),
     `<!DOCTYPE html>\n<html lang="uk">\n<head>\n<meta charset="UTF-8"/>\n<meta name="viewport" content="width=device-width,initial-scale=1.0"/>\n<title>${formData?.companyName || 'Site'}</title>\n</head>\n<body style="margin:0"><div id="root"></div>\n<script type="module" src="/src/main.jsx"></script>\n</body>\n</html>\n`)

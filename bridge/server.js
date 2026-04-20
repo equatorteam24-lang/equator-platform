@@ -2,36 +2,105 @@
 
 /**
  * Bridge Server — HTTP API that spawns Claude Code CLI
- * Runs on the same machine where Claude Code is installed.
- * Super-admin (Vercel) calls this server to use Claude via subscription.
- *
- * Endpoints:
- *   POST /parse-brief   — sync: parse free text into form fields
- *   POST /generate-site  — async: start site generation, returns jobId
- *   POST /chat/:id       — async: send revision to existing project
- *   GET  /job/:id        — check job status
- *
- * Auth: Bearer token via BRIDGE_SECRET env var
+ * Jobs persisted to disk (survives restarts).
+ * On startup, recovers orphaned jobs.
  */
 
 const http = require('http')
 const { spawn, execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
-const crypto = require('crypto')
 
 const PORT = process.env.BRIDGE_PORT || 3001
 const SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
 const PROJECTS_DIR = path.join(__dirname, '..', 'tmp-sites')
+const JOBS_DIR = path.join(__dirname, 'jobs')
 
-// In-memory job store
-const jobs = new Map()
-
-// Ensure tmp-sites exists
-if (!fs.existsSync(PROJECTS_DIR)) {
-  fs.mkdirSync(PROJECTS_DIR, { recursive: true })
+// Ensure dirs exist
+for (const dir of [PROJECTS_DIR, JOBS_DIR]) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 }
 
+// ─── Job persistence ───
+function saveJob(jobId, data) {
+  fs.writeFileSync(path.join(JOBS_DIR, `${jobId}.json`), JSON.stringify(data, null, 2))
+}
+
+function loadJob(jobId) {
+  const file = path.join(JOBS_DIR, `${jobId}.json`)
+  if (!fs.existsSync(file)) return null
+  try { return JSON.parse(fs.readFileSync(file, 'utf-8')) }
+  catch { return null }
+}
+
+function updateJob(jobId, updates) {
+  const job = loadJob(jobId) || {}
+  const updated = { ...job, ...updates }
+  saveJob(jobId, updated)
+  return updated
+}
+
+// ─── On startup: recover orphaned "running" jobs ───
+function recoverOrphanedJobs() {
+  if (!fs.existsSync(JOBS_DIR)) return
+  const files = fs.readdirSync(JOBS_DIR).filter(f => f.endsWith('.json'))
+  for (const file of files) {
+    try {
+      const job = JSON.parse(fs.readFileSync(path.join(JOBS_DIR, file), 'utf-8'))
+      if (job.status === 'running') {
+        const jobId = file.replace('.json', '')
+        const projectDir = path.join(PROJECTS_DIR, job.projectId || jobId.split('-chat-')[0])
+
+        // Check if code was actually generated (claude finished but bridge died before updating)
+        const appJsx = path.join(projectDir, 'src', 'App.jsx')
+        if (fs.existsSync(appJsx)) {
+          const generatedCode = fs.readFileSync(appJsx, 'utf-8')
+          if (generatedCode.length > 500) {
+            console.log(`Recovering orphaned job ${jobId} — code found, building...`)
+            // Try to build and deploy in background
+            buildAndDeploy(jobId, projectDir, generatedCode)
+            continue
+          }
+        }
+
+        // Code wasn't generated — mark as error
+        console.log(`Recovering orphaned job ${jobId} — no code found, marking error`)
+        updateJob(jobId, {
+          status: 'error',
+          error: 'Bridge restarted during generation. Please retry.',
+          finishedAt: Date.now(),
+        })
+      }
+    } catch {}
+  }
+}
+
+async function buildAndDeploy(jobId, projectDir, generatedCode) {
+  let vercelUrl = null
+  try {
+    execSync('npm install', { cwd: projectDir, timeout: 60000, stdio: 'pipe' })
+    execSync('npx vite build', { cwd: projectDir, timeout: 60000, stdio: 'pipe' })
+    const deployOutput = execSync(
+      'npx --yes vercel deploy --prod --yes 2>&1',
+      { cwd: projectDir, timeout: 120000, encoding: 'utf-8' }
+    )
+    const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
+    if (urlMatch) vercelUrl = urlMatch[0]
+  } catch (err) {
+    console.error(`Build/deploy error for ${jobId}:`, err.message)
+  }
+
+  updateJob(jobId, {
+    status: 'done',
+    generatedCode,
+    vercelUrl,
+    finishedAt: Date.now(),
+    error: null,
+  })
+  console.log(`Job ${jobId} recovered → ${vercelUrl || 'no deploy URL'}`)
+}
+
+// ─── Utils ───
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = ''
@@ -45,8 +114,7 @@ function parseBody(req) {
 }
 
 function auth(req) {
-  const header = req.headers.authorization || ''
-  return header === `Bearer ${SECRET}`
+  return (req.headers.authorization || '') === `Bearer ${SECRET}`
 }
 
 function respond(res, status, data) {
@@ -54,37 +122,30 @@ function respond(res, status, data) {
   res.end(JSON.stringify(data))
 }
 
-// ─── Run claude CLI and capture output ───
 function runClaude(prompt, options = {}) {
   const { cwd, maxTurns, timeout } = options
-
   const args = [
     '-p', prompt,
     '--output-format', 'text',
     '--dangerously-skip-permissions',
     '--verbose',
   ]
-
   if (maxTurns) args.push('--max-turns', String(maxTurns))
 
   return new Promise((resolve, reject) => {
     let stdout = ''
     let stderr = ''
-
     const proc = spawn('claude', args, {
       cwd: cwd || process.cwd(),
-      timeout: timeout || 300000, // 5 min default
+      timeout: timeout || 300000,
       env: { ...process.env, FORCE_COLOR: '0' },
     })
-
     proc.stdout.on('data', d => { stdout += d.toString() })
     proc.stderr.on('data', d => { stderr += d.toString() })
-
     proc.on('close', code => {
       if (code === 0) resolve(stdout.trim())
-      else reject(new Error(`claude exited ${code}: ${stderr || stdout}`))
+      else reject(new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`))
     })
-
     proc.on('error', reject)
   })
 }
@@ -153,72 +214,44 @@ async function handleGenerateSite(req, res) {
   }, null, 2))
 
   fs.writeFileSync(path.join(projectDir, 'vite.config.js'),
-    `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nexport default defineConfig({ plugins: [react()] })\n`
-  )
+    `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nexport default defineConfig({ plugins: [react()] })\n`)
 
   fs.writeFileSync(path.join(projectDir, 'index.html'),
-    `<!DOCTYPE html>\n<html lang="uk">\n<head>\n<meta charset="UTF-8"/>\n<meta name="viewport" content="width=device-width,initial-scale=1.0"/>\n<title>${formData?.companyName || 'Site'}</title>\n</head>\n<body style="margin:0"><div id="root"></div>\n<script type="module" src="/src/main.jsx"></script>\n</body>\n</html>\n`
-  )
+    `<!DOCTYPE html>\n<html lang="uk">\n<head>\n<meta charset="UTF-8"/>\n<meta name="viewport" content="width=device-width,initial-scale=1.0"/>\n<title>${formData?.companyName || 'Site'}</title>\n</head>\n<body style="margin:0"><div id="root"></div>\n<script type="module" src="/src/main.jsx"></script>\n</body>\n</html>\n`)
 
   fs.writeFileSync(path.join(projectDir, 'src', 'main.jsx'),
-    `import React from 'react'\nimport ReactDOM from 'react-dom/client'\nimport App from './App.jsx'\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>)\n`
-  )
+    `import React from 'react'\nimport ReactDOM from 'react-dom/client'\nimport App from './App.jsx'\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>)\n`)
 
-  // Start async job
   const jobId = projectId
-  jobs.set(jobId, { status: 'running', startedAt: Date.now(), output: '', error: null })
+  saveJob(jobId, { status: 'running', projectId, startedAt: Date.now() })
 
   // Run in background
   ;(async () => {
     try {
-      // Step 1: Generate site using premium-web-design skill
       const skillPrompt = `/premium-web-design\n\n${prompt}`
       const output = await runClaude(skillPrompt, {
         cwd: projectDir,
         maxTurns: 30,
-        timeout: 900000, // 15 min
+        timeout: 900000,
       })
 
-      // Step 2: Read generated code
       let generatedCode = ''
       try {
         generatedCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8')
       } catch {
         const srcFiles = fs.readdirSync(path.join(projectDir, 'src')).filter(f => f.endsWith('.jsx'))
-        if (srcFiles.length > 0) {
-          generatedCode = fs.readFileSync(path.join(projectDir, 'src', srcFiles[0]), 'utf-8')
-        }
+        if (srcFiles.length > 0) generatedCode = fs.readFileSync(path.join(projectDir, 'src', srcFiles[0]), 'utf-8')
       }
 
-      // Step 3: Build & deploy
-      let vercelUrl = null
-      try {
-        execSync('npm install', { cwd: projectDir, timeout: 60000 })
-        execSync('npx vite build', { cwd: projectDir, timeout: 60000 })
-        const deployOutput = execSync(
-          'npx --yes vercel deploy --prod --yes 2>&1',
-          { cwd: projectDir, timeout: 120000, encoding: 'utf-8' }
-        )
-        const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
-        if (urlMatch) vercelUrl = urlMatch[0]
-      } catch (buildErr) {
-        console.error('Build/deploy error:', buildErr.message)
-      }
+      // Build & deploy
+      await buildAndDeploy(jobId, projectDir, generatedCode)
 
-      jobs.set(jobId, {
-        status: 'done',
-        output,
-        generatedCode,
-        vercelUrl,
-        finishedAt: Date.now(),
-        error: null,
-      })
+      // Update output
+      const job = loadJob(jobId)
+      if (job) updateJob(jobId, { output })
+
     } catch (err) {
-      jobs.set(jobId, {
-        status: 'error',
-        error: err.message,
-        finishedAt: Date.now(),
-      })
+      updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
     }
   })()
 
@@ -234,11 +267,11 @@ async function handleChat(req, res, projectId) {
   if (!fs.existsSync(projectDir)) return respond(res, 404, { error: 'project not found' })
 
   const jobId = `${projectId}-chat-${Date.now()}`
-  jobs.set(jobId, { status: 'running', startedAt: Date.now() })
+  saveJob(jobId, { status: 'running', projectId, startedAt: Date.now() })
 
   const chatPrompt = `
 # КОНТЕКСТ
-Ти — агент-конструктор сайтів Equator Agency. Ти працюєш над сайтом клієнта.
+Ти — агент-конструктор сайтів Equator Agency.
 
 ## БЕЗПЕКА
 ⛔ Працюй ВИКЛЮЧНО в поточній папці проекту.
@@ -260,35 +293,19 @@ ${message}
       const output = await runClaude(chatPrompt, {
         cwd: projectDir,
         maxTurns: 15,
-        timeout: 600000, // 10 min
+        timeout: 600000,
       })
 
       let generatedCode = ''
-      try {
-        generatedCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8')
-      } catch {}
+      try { generatedCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8') }
+      catch {}
 
-      // Rebuild & redeploy
-      let vercelUrl = null
-      try {
-        execSync('npx vite build', { cwd: projectDir, timeout: 60000 })
-        const deployOutput = execSync(
-          'npx --yes vercel deploy --prod --yes 2>&1',
-          { cwd: projectDir, timeout: 120000, encoding: 'utf-8' }
-        )
-        const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
-        if (urlMatch) vercelUrl = urlMatch[0]
-      } catch {}
+      await buildAndDeploy(jobId, projectDir, generatedCode)
+      const job = loadJob(jobId)
+      if (job) updateJob(jobId, { output })
 
-      jobs.set(jobId, {
-        status: 'done',
-        output,
-        generatedCode,
-        vercelUrl,
-        finishedAt: Date.now(),
-      })
     } catch (err) {
-      jobs.set(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
+      updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
     }
   })()
 
@@ -297,42 +314,38 @@ ${message}
 
 // ─── Job status ───
 function handleJobStatus(res, jobId) {
-  const job = jobs.get(jobId)
+  const job = loadJob(jobId)
   if (!job) return respond(res, 404, { error: 'job not found' })
   respond(res, 200, job)
 }
 
+// ─── Health check ───
+function handleHealth(res) {
+  respond(res, 200, { status: 'ok', uptime: process.uptime() })
+}
+
 // ─── HTTP Server ───
 const server = http.createServer(async (req, res) => {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return }
 
-  // Auth
   if (!auth(req)) return respond(res, 401, { error: 'unauthorized' })
 
   const url = new URL(req.url, `http://localhost:${PORT}`)
   const pathname = url.pathname
 
   try {
-    if (req.method === 'POST' && pathname === '/parse-brief') {
-      return await handleParseBrief(req, res)
-    }
-    if (req.method === 'POST' && pathname === '/generate-site') {
-      return await handleGenerateSite(req, res)
-    }
-    // POST /chat/:projectId
+    if (pathname === '/health') return handleHealth(res)
+    if (req.method === 'POST' && pathname === '/parse-brief') return await handleParseBrief(req, res)
+    if (req.method === 'POST' && pathname === '/generate-site') return await handleGenerateSite(req, res)
+
     const chatMatch = pathname.match(/^\/chat\/([a-f0-9-]+)$/)
-    if (req.method === 'POST' && chatMatch) {
-      return await handleChat(req, res, chatMatch[1])
-    }
-    // GET /job/:jobId
+    if (req.method === 'POST' && chatMatch) return await handleChat(req, res, chatMatch[1])
+
     const jobMatch = pathname.match(/^\/job\/([a-f0-9-]+(?:-chat-\d+)?)$/)
-    if (req.method === 'GET' && jobMatch) {
-      return handleJobStatus(res, jobMatch[1])
-    }
+    if (req.method === 'GET' && jobMatch) return handleJobStatus(res, jobMatch[1])
 
     respond(res, 404, { error: 'not found' })
   } catch (err) {
@@ -341,8 +354,9 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
+// ─── Start ───
+recoverOrphanedJobs()
+
 server.listen(PORT, () => {
-  console.log(`🌉 Bridge server running on http://localhost:${PORT}`)
-  console.log(`   Projects dir: ${PROJECTS_DIR}`)
-  console.log(`   Auth: Bearer token required`)
+  console.log(`Bridge running on :${PORT} | Jobs dir: ${JOBS_DIR}`)
 })

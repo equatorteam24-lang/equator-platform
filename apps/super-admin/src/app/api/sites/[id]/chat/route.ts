@@ -2,6 +2,9 @@ import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
+const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
+const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,106 +45,34 @@ export async function POST(
   // Add user message to chat history
   const chatHistory = [...(project.chat_history || []), { role: 'user', content: message, timestamp: new Date().toISOString() }]
 
+  // Save chat history immediately
+  await service.from('site_projects')
+    .update({ chat_history: chatHistory })
+    .eq('id', id)
+
   try {
-    const { query } = await import('@anthropic-ai/claude-agent-sdk')
-    const path = await import('path')
-    const projectDir = path.join(process.cwd(), '..', '..', 'tmp-sites', id)
-
-    let assistantResponse = ''
-
-    const queryOptions: any = {
-      cwd: projectDir,
-      model: project.form_data?.model || 'claude-sonnet-4-6',
-      allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
-      permissionMode: 'bypassPermissions',
-      maxTurns: 15,
-    }
-
-    // Resume session if available
-    if (project.session_id) {
-      queryOptions.resume = project.session_id
-    }
-
-    const chatPrompt = `
-# КОНТЕКСТ
-Ти — агент-конструктор сайтів Equator Agency. Ти працюєш над сайтом клієнта.
-
-## БЕЗПЕКА
-⛔ Працюй ВИКЛЮЧНО в папці проекту: ${projectDir}
-⛔ Заборонено: доступ поза проектом, батьківські директорії, системні команди, .env файли
-✅ Дозволено: читати/писати файли в ${projectDir}, встановлювати npm пакети локально, build/dev команди
-
-## ЗАПИТ ВІД ДИЗАЙНЕРА/МЕНЕДЖЕРА
-${message}
-
-## ЩО РОБИТИ
-- Якщо запит стосується дизайну — відредагуй src/App.jsx відповідно
-- Якщо запит стосується нових функцій (Google Maps, слайдер, калькулятор тощо) — можеш встановити npm пакет і підключити
-- Якщо запит про ЕТАП 2 (адмінка, Supabase, CRM, аналітика, SEO, Telegram) — підключи відповідну інтеграцію:
-  - Адмін-панель: зроби щоб весь контент на сайті можна було редагувати через /admin
-  - CRM: форми відправляють дані в Supabase таблицю leads
-  - Аналітика: трекінг page views і подій
-  - SEO: мета-теги, Open Graph, structured data
-- Після змін — підтверди що саме було змінено
-
-Дій зараз.
-`
-
-    for await (const msg of query({
-      prompt: chatPrompt,
-      options: queryOptions,
-    })) {
-      if (msg.type === 'assistant' && msg.message?.content) {
-        for (const block of msg.message.content) {
-          if ('text' in block) assistantResponse += block.text
-        }
-      }
-      // Capture new session ID
-      if (msg.type === 'system' && (msg as any).session_id) {
-        await service.from('site_projects')
-          .update({ session_id: (msg as any).session_id })
-          .eq('id', id)
-      }
-    }
-
-    // Re-build and re-deploy
-    const { execSync } = await import('child_process')
-    let newUrl = project.vercel_url
-    try {
-      execSync('npx vite build', { cwd: projectDir, timeout: 60000 })
-      const deployOutput = execSync(
-        'npx --yes vercel deploy --prod --yes 2>&1',
-        { cwd: projectDir, timeout: 120000, encoding: 'utf-8' }
-      )
-      const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
-      if (urlMatch) newUrl = urlMatch[0]
-    } catch (e: any) {
-      assistantResponse += '\n\n⚠️ Білд або деплой зазнав помилки. Перевірте код.'
-    }
-
-    // Update chat history and status
-    chatHistory.push({ role: 'assistant', content: assistantResponse, timestamp: new Date().toISOString() })
-
-    const fs = await import('fs/promises')
-    let generatedCode = project.generated_code
-    try {
-      generatedCode = await fs.readFile(path.join(projectDir, 'src', 'App.jsx'), 'utf-8')
-    } catch {}
-
-    await service.from('site_projects').update({
-      status: 'review',
-      chat_history: chatHistory,
-      generated_code: generatedCode,
-      vercel_url: newUrl,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-
-    return NextResponse.json({
-      response: assistantResponse,
-      vercel_url: newUrl,
+    // Send to bridge
+    const bridgeRes = await fetch(`${BRIDGE_URL}/chat/${id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${BRIDGE_SECRET}`,
+      },
+      body: JSON.stringify({ message }),
     })
+
+    if (!bridgeRes.ok) {
+      const err = await bridgeRes.json().catch(() => ({}))
+      throw new Error(err.error || 'Bridge error')
+    }
+
+    const { jobId } = await bridgeRes.json()
+
+    // Poll for completion
+    pollChatJob(jobId, id, chatHistory, service)
+
+    return NextResponse.json({ status: 'revising', jobId })
   } catch (err: any) {
-    // Restore status on error
     chatHistory.push({ role: 'assistant', content: `Помилка: ${err.message}`, timestamp: new Date().toISOString() })
     await service.from('site_projects').update({
       status: 'review',
@@ -149,6 +80,51 @@ ${message}
       updated_at: new Date().toISOString(),
     }).eq('id', id)
 
-    return NextResponse.json({ error: err.message, response: `Помилка агента: ${err.message}` }, { status: 500 })
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
+}
+
+async function pollChatJob(jobId: string, projectId: string, chatHistory: any[], service: any) {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(`${BRIDGE_URL}/job/${jobId}`, {
+        headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
+      })
+
+      if (!res.ok) { clearInterval(interval); return }
+
+      const job = await res.json()
+
+      if (job.status === 'done') {
+        clearInterval(interval)
+        chatHistory.push({
+          role: 'assistant',
+          content: job.output || 'Зміни застосовано.',
+          timestamp: new Date().toISOString(),
+        })
+        await service.from('site_projects').update({
+          status: 'review',
+          chat_history: chatHistory,
+          generated_code: job.generatedCode || undefined,
+          vercel_url: job.vercelUrl || undefined,
+          updated_at: new Date().toISOString(),
+        }).eq('id', projectId)
+      } else if (job.status === 'error') {
+        clearInterval(interval)
+        chatHistory.push({
+          role: 'assistant',
+          content: `Помилка: ${job.error}`,
+          timestamp: new Date().toISOString(),
+        })
+        await service.from('site_projects').update({
+          status: 'review',
+          chat_history: chatHistory,
+          updated_at: new Date().toISOString(),
+        }).eq('id', projectId)
+      }
+    } catch {}
+  }, 5000)
+
+  // Stop after 15 minutes
+  setTimeout(() => clearInterval(interval), 900000)
 }

@@ -1,0 +1,17 @@
+[Unit]
+Description=Equator Bridge Server (Claude Code CLI proxy)
+After=network.target
+
+[Service]
+Type=simple
+User=alexa
+WorkingDirectory=/home/alexa/Projects/equator-platform/bridge
+ExecStart=/usr/bin/node /home/alexa/Projects/equator-platform/bridge/server.js
+Restart=always
+RestartSec=5
+Environment=BRIDGE_PORT=3001
+Environment=BRIDGE_SECRET=equator-bridge-secret-change-me
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/home/alexa/.local/bin
+
+[Install]
+WantedBy=multi-user.target

@@ -31,10 +31,11 @@ export async function POST(
   if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { message, attachments, apply } = body as {
+  const { message, attachments, apply, tab } = body as {
     message?: string
     attachments?: { name: string; url: string }[]
     apply?: boolean
+    tab?: 'discuss' | 'revisions'
   }
 
   const service = createServiceClient()
@@ -54,7 +55,7 @@ export async function POST(
 
   // If there's a message, add it to chat history
   if (message?.trim() || attachments?.length) {
-    const userMsg: Record<string, any> = { role: 'user', content: message || '', timestamp: new Date().toISOString() }
+    const userMsg: Record<string, any> = { role: 'user', content: message || '', tab: tab || 'discuss', timestamp: new Date().toISOString() }
     if (attachments?.length) userMsg.attachments = attachments
     chatHistory.push(userMsg)
 
@@ -68,12 +69,17 @@ export async function POST(
     return handleApply(id, chatHistory, service)
   }
 
-  // === Chat mode: get AI response ===
+  // === Revisions mode: just save, no AI reply ===
+  if (tab === 'revisions') {
+    return NextResponse.json({ status: 'saved' })
+  }
+
+  // === Discuss mode: get AI response ===
   if (message?.trim() || attachments?.length) {
     try {
       const aiReply = await getChatReply(chatHistory, project)
 
-      chatHistory.push({ role: 'assistant', content: aiReply, timestamp: new Date().toISOString() })
+      chatHistory.push({ role: 'assistant', content: aiReply, tab: 'discuss', timestamp: new Date().toISOString() })
       await service.from('site_projects')
         .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -83,7 +89,7 @@ export async function POST(
       console.error('AI chat error:', err)
       const errorMsg = err?.error?.error?.message || err?.message || 'Невідома помилка AI'
       const reply = `Не вдалося отримати відповідь: ${errorMsg}`
-      chatHistory.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString() })
+      chatHistory.push({ role: 'assistant', content: reply, tab: 'discuss', timestamp: new Date().toISOString() })
       await service.from('site_projects')
         .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -97,8 +103,9 @@ export async function POST(
 async function getChatReply(chatHistory: any[], project: any): Promise<string> {
   const anthropic = new Anthropic()
 
-  // Build messages for Claude (last 20 messages for context)
-  const recentHistory = chatHistory.slice(-20)
+  // Build messages for Claude (last 20 discuss messages for context)
+  const discussHistory = chatHistory.filter((m: any) => !m.tab || m.tab === 'discuss')
+  const recentHistory = discussHistory.slice(-20)
   const messages: Anthropic.MessageParam[] = recentHistory.map((msg: any) => {
     const content: Anthropic.ContentBlockParam[] = []
 
@@ -162,11 +169,11 @@ async function handleApply(id: string, chatHistory: any[], service: any) {
     .update({ status: 'revising', updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Collect all unprocessed user messages since the last assistant message with type 'bridge'
-  // (regular assistant chat replies don't count — we want messages since last bridge response)
+  // Collect unprocessed revision messages (tab === 'revisions') since last bridge response
+  const revisionMsgs = chatHistory.filter((m: any) => m.tab === 'revisions')
   const unprocessedMessages: string[] = []
-  for (let i = chatHistory.length - 1; i >= 0; i--) {
-    const msg = chatHistory[i]
+  for (let i = revisionMsgs.length - 1; i >= 0; i--) {
+    const msg = revisionMsgs[i]
     if (msg.role === 'assistant' && msg.source === 'bridge') break
     if (msg.role === 'user') {
       let text = msg.content || ''
@@ -201,7 +208,7 @@ async function handleApply(id: string, chatHistory: any[], service: any) {
 
     return NextResponse.json({ status: 'revising', jobId })
   } catch (err: any) {
-    chatHistory.push({ role: 'assistant', content: `Помилка: ${err.message}`, source: 'bridge', timestamp: new Date().toISOString() })
+    chatHistory.push({ role: 'assistant', content: `Помилка: ${err.message}`, tab: 'revisions', source: 'bridge', timestamp: new Date().toISOString() })
     await service.from('site_projects').update({
       status: 'review',
       chat_history: chatHistory,
@@ -237,6 +244,7 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
         chatHistory.push({
           role: 'assistant',
           content: job.output || 'Зміни застосовано.',
+          tab: 'revisions',
           source: 'bridge',
           timestamp: new Date().toISOString(),
         })
@@ -252,6 +260,7 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
         chatHistory.push({
           role: 'assistant',
           content: `Помилка: ${job.error}`,
+          tab: 'revisions',
           source: 'bridge',
           timestamp: new Date().toISOString(),
         })

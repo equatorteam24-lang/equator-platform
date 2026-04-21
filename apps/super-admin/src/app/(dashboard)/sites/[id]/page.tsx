@@ -13,6 +13,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   archived:   { label: 'Архів',        color: 'bg-gray-100 text-gray-400' },
 }
 
+type ChatTab = 'discuss' | 'revisions'
+
 export default function SiteProjectPage() {
   const params = useParams()
   const router = useRouter()
@@ -23,6 +25,7 @@ export default function SiteProjectPage() {
   const [chatSending, setChatSending] = useState(false)
   const [chatAttachments, setChatAttachments] = useState<{ name: string; url: string }[]>([])
   const [chatUploading, setChatUploading] = useState(false)
+  const [chatTab, setChatTab] = useState<ChatTab>('discuss')
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const chatEndRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -46,7 +49,6 @@ export default function SiteProjectPage() {
 
   useEffect(() => {
     fetchProject()
-    // Poll for status updates during generation
     const interval = setInterval(async () => {
       const res = await fetch(`/api/sites/${id}`)
       if (res.ok) {
@@ -60,10 +62,10 @@ export default function SiteProjectPage() {
     return () => clearInterval(interval)
   }, [id])
 
-  // Scroll chat to bottom
+  // Scroll chat to bottom when tab or history changes
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [project?.chat_history])
+  }, [project?.chat_history, chatTab])
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items
@@ -102,8 +104,8 @@ export default function SiteProjectPage() {
     setChatUploading(false)
   }
 
-  // Send message and get AI reply
-  const sendChatMessage = async () => {
+  // Send message in discuss mode (get AI reply)
+  const sendDiscussMessage = async () => {
     if ((!chatMessage.trim() && !chatAttachments.length) || chatSending) return
     setChatSending(true)
 
@@ -116,6 +118,7 @@ export default function SiteProjectPage() {
           role: 'user',
           content: chatMessage,
           attachments: pendingAttachments,
+          tab: 'discuss',
           timestamp: new Date().toISOString(),
         },
       ],
@@ -130,7 +133,7 @@ export default function SiteProjectPage() {
       const res = await fetch(`/api/sites/${id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg, attachments: atts }),
+        body: JSON.stringify({ message: msg, attachments: atts, tab: 'discuss' }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -139,7 +142,7 @@ export default function SiteProjectPage() {
             ...prev,
             chat_history: [
               ...(prev.chat_history || []),
-              { role: 'assistant', content: data.reply, timestamp: new Date().toISOString() },
+              { role: 'assistant', content: data.reply, tab: 'discuss', timestamp: new Date().toISOString() },
             ],
           }))
         }
@@ -150,7 +153,44 @@ export default function SiteProjectPage() {
     setChatSending(false)
   }
 
-  // Send all accumulated messages to bridge for applying
+  // Send revision message (just save, no AI reply)
+  const sendRevisionMessage = async () => {
+    if ((!chatMessage.trim() && !chatAttachments.length) || chatSending) return
+    setChatSending(true)
+
+    const pendingAttachments = chatAttachments.length ? [...chatAttachments] : undefined
+    setProject((prev: any) => ({
+      ...prev,
+      chat_history: [
+        ...(prev.chat_history || []),
+        {
+          role: 'user',
+          content: chatMessage,
+          attachments: pendingAttachments,
+          tab: 'revisions',
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    }))
+
+    const msg = chatMessage
+    const atts = pendingAttachments
+    setChatMessage('')
+    setChatAttachments([])
+
+    try {
+      await fetch(`/api/sites/${id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, attachments: atts, tab: 'revisions' }),
+      })
+    } catch (err) {
+      console.error('Revision error:', err)
+    }
+    setChatSending(false)
+  }
+
+  // Apply revisions via bridge
   const applyChanges = async () => {
     if (chatSending) return
     setChatSending(true)
@@ -170,6 +210,11 @@ export default function SiteProjectPage() {
       console.error('Apply error:', err)
     }
     setChatSending(false)
+  }
+
+  const handleSend = () => {
+    if (chatTab === 'discuss') sendDiscussMessage()
+    else sendRevisionMessage()
   }
 
   const handleArchive = async () => {
@@ -205,14 +250,20 @@ export default function SiteProjectPage() {
 
   const status = statusConfig[project.status] ?? statusConfig.draft
   const isGenerating = project.status === 'generating' || project.status === 'revising'
-  const chatHistory = project.chat_history || []
+  const allMessages = project.chat_history || []
 
-  // Check if there are user messages after the last bridge response
-  const hasUnprocessedMessages = (() => {
+  // Filter messages by current tab (show messages without tab in both tabs for backwards compat)
+  const tabMessages = allMessages.filter((msg: any) =>
+    msg.tab === chatTab || (!msg.tab && chatTab === 'discuss')
+  )
+
+  // Check if there are pending revision messages (after last bridge response)
+  const revisionMessages = allMessages.filter((msg: any) => msg.tab === 'revisions')
+  const hasPendingRevisions = (() => {
     let hasUserMsg = false
-    for (let i = chatHistory.length - 1; i >= 0; i--) {
-      if (chatHistory[i].role === 'assistant' && chatHistory[i].source === 'bridge') return hasUserMsg
-      if (chatHistory[i].role === 'user') hasUserMsg = true
+    for (let i = revisionMessages.length - 1; i >= 0; i--) {
+      if (revisionMessages[i].role === 'assistant' && revisionMessages[i].source === 'bridge') return hasUserMsg
+      if (revisionMessages[i].role === 'user') hasUserMsg = true
     }
     return hasUserMsg
   })()
@@ -347,33 +398,91 @@ export default function SiteProjectPage() {
 
         {/* Chat panel */}
         <div className="w-96 border-l border-gray-200 bg-white flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-700">Чат з агентом</h2>
-            <p className="text-xs text-gray-400">Опишіть правки, потім натисніть «Внести правки»</p>
+          {/* Tab switcher */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setChatTab('discuss')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${
+                chatTab === 'discuss'
+                  ? 'text-blue-600'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                </svg>
+                Обговорення
+              </div>
+              {chatTab === 'discuss' && (
+                <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-600 rounded-full" />
+              )}
+            </button>
+            <button
+              onClick={() => setChatTab('revisions')}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${
+                chatTab === 'revisions'
+                  ? 'text-orange-600'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                </svg>
+                Правки
+                {hasPendingRevisions && (
+                  <span className="w-2 h-2 bg-orange-500 rounded-full" />
+                )}
+              </div>
+              {chatTab === 'revisions' && (
+                <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-orange-500 rounded-full" />
+              )}
+            </button>
           </div>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-            {chatHistory.length === 0 && !isGenerating && (project.vercel_url || project.generated_code) && (
+            {tabMessages.length === 0 && !isGenerating && (project.vercel_url || project.generated_code) && (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-400">
-                  Напишіть одне або декілька повідомлень з правками.
-                </p>
-                <p className="text-xs text-gray-300 mt-1">
-                  Коли будете готові — натисніть «Внести правки»
-                </p>
+                {chatTab === 'discuss' ? (
+                  <>
+                    <p className="text-sm text-gray-400">
+                      Запитайте пораду щодо дизайну, кольорів чи структури.
+                    </p>
+                    <p className="text-xs text-gray-300 mt-1">
+                      Наприклад: «Який колір краще для кнопки?»
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-400">
+                      Напишіть конкретні правки для сайту.
+                    </p>
+                    <p className="text-xs text-gray-300 mt-1">
+                      Наприклад: «Змінити колір кнопки на #FF5500»
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
-            {chatHistory.map((msg: any, i: number) => (
+            {tabMessages.map((msg: any, i: number) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
                   className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700'
+                      ? msg.tab === 'revisions'
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-blue-600 text-white'
+                      : msg.source === 'bridge'
+                        ? 'bg-green-50 text-gray-700 border border-green-200'
+                        : 'bg-gray-100 text-gray-700'
                   }`}
                 >
+                  {msg.source === 'bridge' && (
+                    <p className="text-[10px] font-medium text-green-600 mb-1">Агент вніс зміни</p>
+                  )}
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                   {msg.attachments?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -384,14 +493,18 @@ export default function SiteProjectPage() {
                       ))}
                     </div>
                   )}
-                  <p className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-blue-200' : 'text-gray-400'}`}>
+                  <p className={`text-[10px] mt-1 ${
+                    msg.role === 'user'
+                      ? msg.tab === 'revisions' ? 'text-orange-200' : 'text-blue-200'
+                      : 'text-gray-400'
+                  }`}>
                     {new Date(msg.timestamp).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
               </div>
             ))}
 
-            {chatSending && (
+            {chatSending && chatTab === 'discuss' && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 rounded-xl px-4 py-3">
                   <div className="flex gap-1">
@@ -406,16 +519,16 @@ export default function SiteProjectPage() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Apply changes button */}
-          {hasUnprocessedMessages && !isGenerating && (
+          {/* Apply changes button (only in revisions tab) */}
+          {chatTab === 'revisions' && hasPendingRevisions && !isGenerating && (
             <div className="px-4 py-2 border-t border-gray-200 bg-orange-50">
               <button
                 onClick={applyChanges}
                 disabled={chatSending}
-                className="w-full rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="w-full rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.964m11.49-9.642l1.15-.964M7.501 19.795l.75-1.3m7.5-12.99l.75-1.3m-6.063 16.658l.26-1.477m2.605-14.772l.26-1.477m0 17.726l-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205L12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
                 </svg>
                 Внести правки
               </button>
@@ -468,16 +581,26 @@ export default function SiteProjectPage() {
                 type="text"
                 value={chatMessage}
                 onChange={e => setChatMessage(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                 onPaste={handlePaste}
-                placeholder={isGenerating ? 'Зачекайте...' : 'Опишіть правку...'}
+                placeholder={
+                  isGenerating
+                    ? 'Зачекайте...'
+                    : chatTab === 'discuss'
+                      ? 'Запитайте щось...'
+                      : 'Опишіть правку...'
+                }
                 disabled={isGenerating || chatSending}
                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50"
               />
               <button
-                onClick={sendChatMessage}
+                onClick={handleSend}
                 disabled={isGenerating || chatSending || (!chatMessage.trim() && !chatAttachments.length)}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
+                className={`rounded-lg px-3 py-2 text-white text-sm font-medium disabled:opacity-50 transition ${
+                  chatTab === 'revisions'
+                    ? 'bg-orange-500 hover:bg-orange-600'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
                 ↑
               </button>

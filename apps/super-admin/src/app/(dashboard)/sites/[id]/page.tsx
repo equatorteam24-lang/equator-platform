@@ -26,6 +26,7 @@ export default function SiteProjectPage() {
   const [chatAttachments, setChatAttachments] = useState<{ name: string; url: string }[]>([])
   const [chatUploading, setChatUploading] = useState(false)
   const [chatTab, setChatTab] = useState<ChatTab>('discuss')
+  const [chatOpen, setChatOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const chatEndRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -420,10 +421,33 @@ export default function SiteProjectPage() {
           </div>
         </div>
 
+        {/* Chat toggle button (when collapsed) */}
+        {!chatOpen && (
+          <button
+            onClick={() => setChatOpen(true)}
+            className="flex-shrink-0 border-l border-gray-200 bg-white hover:bg-gray-50 px-2 flex flex-col items-center justify-center gap-2 transition"
+            title="Відкрити чат"
+          >
+            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+            </svg>
+            <span className="text-[10px] text-gray-400 [writing-mode:vertical-lr]">Чат</span>
+          </button>
+        )}
+
         {/* Chat panel */}
-        <div className="w-96 border-l border-gray-200 bg-white flex flex-col">
+        <div className={`border-l border-gray-200 bg-white flex flex-col transition-all duration-200 ${chatOpen ? 'w-96' : 'w-0 overflow-hidden border-l-0'}`}>
           {/* Tab switcher */}
           <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setChatOpen(false)}
+              className="px-2.5 flex items-center text-gray-300 hover:text-gray-500 transition border-r border-gray-200"
+              title="Згорнути чат"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
             <button
               onClick={() => setChatTab('discuss')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition relative ${

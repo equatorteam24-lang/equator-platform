@@ -65,6 +65,24 @@ export default function SiteProjectPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [project?.chat_history])
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const imageFiles: File[] = []
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) imageFiles.push(file)
+      }
+    }
+    if (imageFiles.length) {
+      e.preventDefault()
+      const dt = new DataTransfer()
+      imageFiles.forEach(f => dt.items.add(f))
+      handleChatFileUpload(dt.files)
+    }
+  }
+
   const handleChatFileUpload = async (files: FileList | null) => {
     if (!files?.length) return
     setChatUploading(true)
@@ -400,6 +418,7 @@ export default function SiteProjectPage() {
                 value={chatMessage}
                 onChange={e => setChatMessage(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                onPaste={handlePaste}
                 placeholder={isGenerating ? 'Зачекайте...' : 'Опишіть правку...'}
                 disabled={isGenerating || chatSending}
                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50"

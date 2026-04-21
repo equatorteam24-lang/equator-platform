@@ -102,7 +102,7 @@ export default function SiteProjectPage() {
     setChatUploading(false)
   }
 
-  // Just save message to chat history (no bridge)
+  // Send message and get AI reply
   const sendChatMessage = async () => {
     if ((!chatMessage.trim() && !chatAttachments.length) || chatSending) return
     setChatSending(true)
@@ -127,11 +127,23 @@ export default function SiteProjectPage() {
     setChatAttachments([])
 
     try {
-      await fetch(`/api/sites/${id}/chat`, {
+      const res = await fetch(`/api/sites/${id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, attachments: atts }),
       })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.reply) {
+          setProject((prev: any) => ({
+            ...prev,
+            chat_history: [
+              ...(prev.chat_history || []),
+              { role: 'assistant', content: data.reply, timestamp: new Date().toISOString() },
+            ],
+          }))
+        }
+      }
     } catch (err) {
       console.error('Chat error:', err)
     }
@@ -195,13 +207,14 @@ export default function SiteProjectPage() {
   const isGenerating = project.status === 'generating' || project.status === 'revising'
   const chatHistory = project.chat_history || []
 
-  // Check if there are unprocessed user messages (after the last assistant message)
+  // Check if there are user messages after the last bridge response
   const hasUnprocessedMessages = (() => {
+    let hasUserMsg = false
     for (let i = chatHistory.length - 1; i >= 0; i--) {
-      if (chatHistory[i].role === 'assistant') return false
-      if (chatHistory[i].role === 'user') return true
+      if (chatHistory[i].role === 'assistant' && chatHistory[i].source === 'bridge') return hasUserMsg
+      if (chatHistory[i].role === 'user') hasUserMsg = true
     }
-    return false
+    return hasUserMsg
   })()
 
   return (

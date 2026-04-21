@@ -1,9 +1,22 @@
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
+import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
 const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
 const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
+
+const CHAT_SYSTEM_PROMPT = `Ти — дизайн-консультант веб-агентства Equator. Ти допомагаєш клієнту з правками на сайті.
+
+Твоя роль:
+- Відповідай коротко і по суті (2-4 речення)
+- Допомагай з вибором кольорів, шрифтів, компонування, UX
+- Пропонуй конкретні варіанти коли питають пораду
+- Якщо клієнт описує правку — підтверди що зрозумів і запропонуй уточнення якщо потрібно
+- Коли клієнт готовий — нагадай натиснути кнопку «Внести правки» щоб застосувати зміни
+
+Спілкуйся українською. Будь дружнім і професійним.
+Ти НЕ вносиш правки сам — тільки консультуєш. Правки вносить окремий агент після натискання кнопки.`
 
 export async function POST(
   req: NextRequest,
@@ -50,26 +63,110 @@ export async function POST(
       .eq('id', id)
   }
 
-  // If not applying — just save the message, don't trigger bridge
-  if (!apply) {
-    return NextResponse.json({ status: 'saved' })
+  // === Apply mode: send to bridge ===
+  if (apply) {
+    return handleApply(id, chatHistory, service)
   }
 
-  // === Apply mode: send to bridge ===
+  // === Chat mode: get AI response ===
+  if (message?.trim() || attachments?.length) {
+    try {
+      const aiReply = await getChatReply(chatHistory, project)
 
+      chatHistory.push({ role: 'assistant', content: aiReply, timestamp: new Date().toISOString() })
+      await service.from('site_projects')
+        .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
+        .eq('id', id)
+
+      return NextResponse.json({ status: 'replied', reply: aiReply })
+    } catch (err: any) {
+      console.error('AI chat error:', err)
+      // Don't fail the whole request — message is already saved
+      return NextResponse.json({ status: 'saved' })
+    }
+  }
+
+  return NextResponse.json({ status: 'saved' })
+}
+
+async function getChatReply(chatHistory: any[], project: any): Promise<string> {
+  const anthropic = new Anthropic()
+
+  // Build messages for Claude (last 20 messages for context)
+  const recentHistory = chatHistory.slice(-20)
+  const messages: Anthropic.MessageParam[] = recentHistory.map((msg: any) => {
+    const content: Anthropic.ContentBlockParam[] = []
+
+    if (msg.content) {
+      content.push({ type: 'text', text: msg.content })
+    }
+
+    // Include attachment URLs as text context
+    if (msg.attachments?.length) {
+      content.push({
+        type: 'text',
+        text: `[Прикріплено ${msg.attachments.length} зображень: ${msg.attachments.map((a: any) => a.name).join(', ')}]`,
+      })
+    }
+
+    if (content.length === 0) {
+      content.push({ type: 'text', text: '(порожнє повідомлення)' })
+    }
+
+    return {
+      role: msg.role as 'user' | 'assistant',
+      content,
+    }
+  })
+
+  // Ensure messages start with user and alternate properly
+  const cleaned: Anthropic.MessageParam[] = []
+  for (const msg of messages) {
+    if (cleaned.length === 0 && msg.role !== 'user') continue
+    if (cleaned.length > 0 && cleaned[cleaned.length - 1].role === msg.role) {
+      // Merge consecutive same-role messages
+      const prev = cleaned[cleaned.length - 1]
+      const prevContent = Array.isArray(prev.content) ? prev.content : [{ type: 'text' as const, text: String(prev.content) }]
+      const curContent = Array.isArray(msg.content) ? msg.content : [{ type: 'text' as const, text: String(msg.content) }]
+      prev.content = [...prevContent, ...curContent]
+      continue
+    }
+    cleaned.push({ ...msg })
+  }
+
+  if (cleaned.length === 0) {
+    return 'Привіт! Чим можу допомогти з сайтом?'
+  }
+
+  const systemContext = `${CHAT_SYSTEM_PROMPT}\n\nІнформація про проект:\n- Назва: ${project.name || 'Без назви'}\n- Компанія: ${project.form_data?.companyName || 'Невідомо'}\n- Статус: ${project.status}`
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 300,
+    system: systemContext,
+    messages: cleaned,
+  })
+
+  const textBlock = response.content.find((b: any) => b.type === 'text')
+  return textBlock ? (textBlock as Anthropic.TextBlock).text : 'Не вдалося отримати відповідь.'
+}
+
+async function handleApply(id: string, chatHistory: any[], service: any) {
   // Update status to revising
   await service.from('site_projects')
     .update({ status: 'revising', updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Collect all unprocessed user messages since the last assistant message
+  // Collect all unprocessed user messages since the last assistant message with type 'bridge'
+  // (regular assistant chat replies don't count — we want messages since last bridge response)
   const unprocessedMessages: string[] = []
   for (let i = chatHistory.length - 1; i >= 0; i--) {
-    if (chatHistory[i].role === 'assistant') break
-    if (chatHistory[i].role === 'user') {
-      let text = chatHistory[i].content || ''
-      if (chatHistory[i].attachments?.length) {
-        text += '\n\n📎 Прикріплені файли:\n' + chatHistory[i].attachments.map((a: any) => `- ${a.name}: ${a.url}`).join('\n')
+    const msg = chatHistory[i]
+    if (msg.role === 'assistant' && msg.source === 'bridge') break
+    if (msg.role === 'user') {
+      let text = msg.content || ''
+      if (msg.attachments?.length) {
+        text += '\n\n📎 Прикріплені файли:\n' + msg.attachments.map((a: any) => `- ${a.name}: ${a.url}`).join('\n')
         text += '\n\n⚠️ Використай ці зображення на сайті в <img src="URL">.'
       }
       unprocessedMessages.unshift(text)
@@ -99,7 +196,7 @@ export async function POST(
 
     return NextResponse.json({ status: 'revising', jobId })
   } catch (err: any) {
-    chatHistory.push({ role: 'assistant', content: `Помилка: ${err.message}`, timestamp: new Date().toISOString() })
+    chatHistory.push({ role: 'assistant', content: `Помилка: ${err.message}`, source: 'bridge', timestamp: new Date().toISOString() })
     await service.from('site_projects').update({
       status: 'review',
       chat_history: chatHistory,
@@ -135,6 +232,7 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
         chatHistory.push({
           role: 'assistant',
           content: job.output || 'Зміни застосовано.',
+          source: 'bridge',
           timestamp: new Date().toISOString(),
         })
         await service.from('site_projects').update({
@@ -149,6 +247,7 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
         chatHistory.push({
           role: 'assistant',
           content: `Помилка: ${job.error}`,
+          source: 'bridge',
           timestamp: new Date().toISOString(),
         })
         await service.from('site_projects').update({

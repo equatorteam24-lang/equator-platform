@@ -248,6 +248,36 @@ function runClaude(prompt, options = {}) {
   })
 }
 
+// Chat-only mode: no tools, no file access, just text response
+function runClaudeChat(prompt, options = {}) {
+  const { timeout } = options
+  const args = [
+    '-p', prompt,
+    '--output-format', 'text',
+    '--max-turns', '1',
+    '--allowedTools', '',
+  ]
+
+  return new Promise((resolve, reject) => {
+    let stdout = ''
+    let stderr = ''
+    const proc = spawn('claude', args, {
+      cwd: '/tmp',
+      timeout: timeout || 60000,
+      env: { ...process.env, FORCE_COLOR: '0' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    proc.stdin.end()
+    proc.stdout.on('data', d => { stdout += d.toString() })
+    proc.stderr.on('data', d => { stderr += d.toString() })
+    proc.on('close', code => {
+      if (code === 0) resolve(stdout.trim())
+      else reject(new Error(`claude exited ${code}: ${stderr.slice(0, 500) || stdout.slice(0, 500)}`))
+    })
+    proc.on('error', reject)
+  })
+}
+
 // ─── Parse brief: sync ───
 async function handleParseBrief(req, res) {
   const { description } = await parseBody(req)
@@ -394,20 +424,15 @@ async function handleDiscuss(req, res, projectId) {
 - Структура сайту
 - Конкретні пропозиції
 
-Ти НЕ вносиш зміни в код — тільки консультуєш. Для внесення змін є окрема вкладка "Правки".
-${fs.existsSync(path.join(projectDir, 'src', 'App.jsx')) ? '\nПоточний сайт існує в ' + projectDir : ''}
+Ти НЕ вносиш зміни в код — тільки консультуєш. НЕ використовуй жодних інструментів — просто відповідай текстом.
 ${historyContext}
 
 Користувач: ${message}
 
-Відповідай коротко і конкретно.`
+Відповідай коротко і конкретно. Не читай файли, не використовуй інструменти.`
 
   try {
-    const output = await runClaude(discussPrompt, {
-      cwd: fs.existsSync(projectDir) ? projectDir : process.cwd(),
-      maxTurns: 1,
-      timeout: 60000,
-    })
+    const output = await runClaudeChat(discussPrompt, { timeout: 60000 })
     respond(res, 200, { reply: output })
   } catch (err) {
     respond(res, 500, { error: err.message })

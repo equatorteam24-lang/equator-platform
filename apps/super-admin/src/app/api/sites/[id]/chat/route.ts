@@ -164,9 +164,18 @@ async function getChatReply(chatHistory: any[], project: any): Promise<string> {
 }
 
 async function handleApply(id: string, chatHistory: any[], service: any) {
-  // Update status to revising
+  // Add status message to chat
+  chatHistory.push({
+    role: 'assistant',
+    content: 'Правки прийняті. Агент вносить зміни на сайт...',
+    tab: 'revisions',
+    source: 'status',
+    timestamp: new Date().toISOString(),
+  })
+
+  // Update status to revising and save status message
   await service.from('site_projects')
-    .update({ status: 'revising', updated_at: new Date().toISOString() })
+    .update({ status: 'revising', chat_history: chatHistory, updated_at: new Date().toISOString() })
     .eq('id', id)
 
   // Collect unprocessed revision messages (tab === 'revisions') since last bridge response

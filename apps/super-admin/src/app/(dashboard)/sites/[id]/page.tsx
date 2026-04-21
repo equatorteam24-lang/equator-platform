@@ -47,17 +47,27 @@ export default function SiteProjectPage() {
     setLoading(false)
   }
 
+  const prevStatusRef = useRef<string | null>(null)
+
   useEffect(() => {
     fetchProject()
+    // Persistent polling — always active, checks for status transitions
     const interval = setInterval(async () => {
       const res = await fetch(`/api/sites/${id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setProject(data)
-        if (data.status !== 'generating' && data.status !== 'revising') {
-          clearInterval(interval)
+      if (!res.ok) return
+      const data = await res.json()
+      const prev = prevStatusRef.current
+      prevStatusRef.current = data.status
+
+      // Detect transition: revising/generating → review (work finished)
+      if ((prev === 'revising' || prev === 'generating') && data.status === 'review') {
+        // Reload iframe when revisions complete
+        if (iframeRef.current) {
+          iframeRef.current.src = iframeRef.current.src
         }
       }
+
+      setProject(data)
     }, 5000)
     return () => clearInterval(interval)
   }, [id])
@@ -194,6 +204,23 @@ export default function SiteProjectPage() {
   const applyChanges = async () => {
     if (chatSending) return
     setChatSending(true)
+    setChatTab('revisions')
+
+    // Optimistic status message
+    setProject((prev: any) => ({
+      ...prev,
+      chat_history: [
+        ...(prev.chat_history || []),
+        {
+          role: 'assistant',
+          content: 'Правки прийняті. Агент вносить зміни на сайт...',
+          tab: 'revisions',
+          source: 'status',
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    }))
+
     try {
       const res = await fetch(`/api/sites/${id}/chat`, {
         method: 'POST',
@@ -202,9 +229,6 @@ export default function SiteProjectPage() {
       })
       if (res.ok) {
         await fetchProject()
-        if (iframeRef.current) {
-          iframeRef.current.src = iframeRef.current.src
-        }
       }
     } catch (err) {
       console.error('Apply error:', err)
@@ -467,42 +491,79 @@ export default function SiteProjectPage() {
               </div>
             )}
 
-            {tabMessages.map((msg: any, i: number) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
-                    msg.role === 'user'
-                      ? msg.tab === 'revisions'
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-blue-600 text-white'
-                      : msg.source === 'bridge'
-                        ? 'bg-green-50 text-gray-700 border border-green-200'
-                        : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {msg.source === 'bridge' && (
-                    <p className="text-[10px] font-medium text-green-600 mb-1">Агент вніс зміни</p>
-                  )}
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                  {msg.attachments?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {msg.attachments.map((att: any, j: number) => (
-                        <a key={j} href={att.url} target="_blank" rel="noopener noreferrer">
-                          <img src={att.url} alt={att.name} className="w-16 h-16 object-cover rounded-md border border-white/20" />
-                        </a>
-                      ))}
+            {tabMessages.map((msg: any, i: number) => {
+              // Status messages (progress indicators)
+              if (msg.source === 'status') {
+                return (
+                  <div key={i} className="flex justify-center">
+                    <div className="flex items-center gap-2 rounded-full bg-orange-50 border border-orange-200 px-4 py-1.5 text-xs text-orange-600">
+                      {isGenerating && (
+                        <span className="w-3 h-3 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                      )}
+                      {!isGenerating && (
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      )}
+                      {msg.content}
                     </div>
-                  )}
-                  <p className={`text-[10px] mt-1 ${
-                    msg.role === 'user'
-                      ? msg.tab === 'revisions' ? 'text-orange-200' : 'text-blue-200'
-                      : 'text-gray-400'
-                  }`}>
-                    {new Date(msg.timestamp).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  </div>
+                )
+              }
+
+              // Bridge result messages
+              if (msg.source === 'bridge') {
+                return (
+                  <div key={i} className="flex justify-center">
+                    <div className="max-w-[90%] rounded-xl bg-green-50 border border-green-200 px-4 py-2.5 text-sm">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        <span className="text-[10px] font-semibold text-green-600">Правки застосовано</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-gray-600">{msg.content}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                )
+              }
+
+              // Regular user/assistant messages
+              return (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
+                      msg.role === 'user'
+                        ? msg.tab === 'revisions'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.attachments?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {msg.attachments.map((att: any, j: number) => (
+                          <a key={j} href={att.url} target="_blank" rel="noopener noreferrer">
+                            <img src={att.url} alt={att.name} className="w-16 h-16 object-cover rounded-md border border-white/20" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <p className={`text-[10px] mt-1 ${
+                      msg.role === 'user'
+                        ? msg.tab === 'revisions' ? 'text-orange-200' : 'text-blue-200'
+                        : 'text-gray-400'
+                    }`}>
+                      {new Date(msg.timestamp).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
             {chatSending && chatTab === 'discuss' && (
               <div className="flex justify-start">

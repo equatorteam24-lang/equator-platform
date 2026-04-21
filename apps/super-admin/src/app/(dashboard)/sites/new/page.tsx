@@ -22,6 +22,8 @@ const STYLES = [
   { value: 'premium', label: 'Преміум (Awwwards-рівень)' },
 ]
 
+type UploadedFile = { name: string; url: string; size: number; type: string }
+
 export default function NewSitePage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -49,6 +51,13 @@ export default function NewSitePage() {
   const [address, setAddress] = useState('')
   const [socials, setSocials] = useState('')
   const [extraWishes, setExtraWishes] = useState('')
+
+  // File uploads
+  const [referenceFiles, setReferenceFiles] = useState<UploadedFile[]>([])
+  const [materialFiles, setMaterialFiles] = useState<UploadedFile[]>([])
+  const [uploading, setUploading] = useState<string | null>(null)
+  const refInputRef = useRef<HTMLInputElement>(null)
+  const matInputRef = useRef<HTMLInputElement>(null)
 
   // ── Voice recording (Web Speech API) ──
   const startRecording = () => {
@@ -96,6 +105,46 @@ export default function NewSitePage() {
       recognitionRef.current = null
     }
     setIsRecording(false)
+  }
+
+  // ── File upload ──
+  const handleFileUpload = async (files: FileList | null, folder: 'references' | 'materials') => {
+    if (!files?.length) return
+    setUploading(folder)
+    setError('')
+
+    const formData = new FormData()
+    for (const file of Array.from(files)) {
+      formData.append('files', file)
+    }
+    formData.append('folder', folder)
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || 'Помилка завантаження')
+        setUploading(null)
+        return
+      }
+      const data = await res.json()
+      if (folder === 'references') {
+        setReferenceFiles(prev => [...prev, ...data.files])
+      } else {
+        setMaterialFiles(prev => [...prev, ...data.files])
+      }
+    } catch {
+      setError('Помилка мережі при завантаженні')
+    }
+    setUploading(null)
+  }
+
+  const removeFile = (folder: 'references' | 'materials', index: number) => {
+    if (folder === 'references') {
+      setReferenceFiles(prev => prev.filter((_, i) => i !== index))
+    } else {
+      setMaterialFiles(prev => prev.filter((_, i) => i !== index))
+    }
   }
 
   // ── AI parse description into form fields ──
@@ -171,6 +220,8 @@ export default function NewSitePage() {
         socials,
         extraWishes,
         freeDescription,
+        referenceImages: referenceFiles.map(f => ({ name: f.name, url: f.url })),
+        clientMaterials: materialFiles.map(f => ({ name: f.name, url: f.url, type: f.type })),
       }
 
       const res = await fetch('/api/sites', {
@@ -355,6 +406,113 @@ export default function NewSitePage() {
               </div>
             </Field>
           </div>
+
+          {/* Reference screenshots */}
+          <Field label="Скріншоти референсів" hint="Скріншоти сайтів-прикладів, макети з Figma, Dribbble, Behance тощо">
+            <input
+              ref={refInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={e => handleFileUpload(e.target.files, 'references')}
+            />
+            <button
+              type="button"
+              onClick={() => refInputRef.current?.click()}
+              disabled={uploading === 'references'}
+              className="file-upload-btn"
+            >
+              {uploading === 'references' ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                  Завантажую...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                  Додати скріншоти референсів
+                </span>
+              )}
+            </button>
+            {referenceFiles.length > 0 && (
+              <div className="mt-3 grid grid-cols-4 gap-3">
+                {referenceFiles.map((f, i) => (
+                  <div key={i} className="relative group">
+                    <img src={f.url} alt={f.name} className="w-full h-24 object-cover rounded-lg border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => removeFile('references', i)}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    >
+                      &times;
+                    </button>
+                    <p className="text-[10px] text-gray-400 mt-1 truncate">{f.name}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Field>
+        </Section>
+
+        {/* ─── 04.5 Матеріали клієнта ─── */}
+        <Section title="Матеріали клієнта" num="04.5">
+          <p className="text-xs text-gray-400 -mt-2 mb-3">
+            Логотип, фото команди, продукції, офісу — все що потрібно використати на сайті замість стокових фото.
+          </p>
+          <input
+            ref={matInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.svg"
+            className="hidden"
+            onChange={e => handleFileUpload(e.target.files, 'materials')}
+          />
+          <button
+            type="button"
+            onClick={() => matInputRef.current?.click()}
+            disabled={uploading === 'materials'}
+            className="file-upload-btn"
+          >
+            {uploading === 'materials' ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                Завантажую...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                Завантажити матеріали клієнта
+              </span>
+            )}
+          </button>
+          {materialFiles.length > 0 && (
+            <div className="mt-3 grid grid-cols-4 gap-3">
+              {materialFiles.map((f, i) => (
+                <div key={i} className="relative group">
+                  {f.type.startsWith('image/') ? (
+                    <img src={f.url} alt={f.name} className="w-full h-24 object-cover rounded-lg border border-gray-200" />
+                  ) : (
+                    <div className="w-full h-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center">
+                      <span className="text-xs text-gray-400">{f.name.split('.').pop()?.toUpperCase()}</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeFile('materials', i)}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  >
+                    &times;
+                  </button>
+                  <p className="text-[10px] text-gray-400 mt-1 truncate">{f.name}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
 
         {/* ─── 05. Контент ─── */}
@@ -463,6 +621,28 @@ export default function NewSitePage() {
         }
         select.input {
           appearance: auto;
+        }
+        .file-upload-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.625rem 1rem;
+          border: 2px dashed #d1d5db;
+          border-radius: 0.5rem;
+          font-size: 0.875rem;
+          color: #6b7280;
+          background: #f9fafb;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .file-upload-btn:hover {
+          border-color: #3b82f6;
+          color: #3b82f6;
+          background: #eff6ff;
+        }
+        .file-upload-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
       `}</style>
     </div>

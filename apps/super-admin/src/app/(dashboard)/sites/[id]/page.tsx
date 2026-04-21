@@ -21,8 +21,18 @@ export default function SiteProjectPage() {
   const [loading, setLoading] = useState(true)
   const [chatMessage, setChatMessage] = useState('')
   const [chatSending, setChatSending] = useState(false)
+  const [chatAttachments, setChatAttachments] = useState<{ name: string; url: string }[]>([])
+  const [chatUploading, setChatUploading] = useState(false)
+  const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const chatEndRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const chatFileRef = useRef<HTMLInputElement>(null)
+
+  const viewModes = {
+    desktop: { width: '100%', icon: '\u{1F5A5}', label: 'Desktop' },
+    tablet:  { width: '768px', icon: '\u{1F4F1}', label: 'Tablet' },
+    mobile:  { width: '375px', icon: '\u{1F4F1}', label: 'Mobile' },
+  } as const
 
   // Fetch project data
   const fetchProject = async () => {
@@ -55,27 +65,54 @@ export default function SiteProjectPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [project?.chat_history])
 
+  const handleChatFileUpload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setChatUploading(true)
+    const formData = new FormData()
+    for (const file of Array.from(files)) {
+      formData.append('files', file)
+    }
+    formData.append('folder', 'chat')
+    formData.append('projectId', id)
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (res.ok) {
+        const data = await res.json()
+        setChatAttachments(prev => [...prev, ...data.files.map((f: any) => ({ name: f.name, url: f.url }))])
+      }
+    } catch {}
+    setChatUploading(false)
+  }
+
   const sendChatMessage = async () => {
-    if (!chatMessage.trim() || chatSending) return
+    if ((!chatMessage.trim() && !chatAttachments.length) || chatSending) return
     setChatSending(true)
 
     // Optimistic update
+    const pendingAttachments = chatAttachments.length ? [...chatAttachments] : undefined
     setProject((prev: any) => ({
       ...prev,
       chat_history: [
         ...(prev.chat_history || []),
-        { role: 'user', content: chatMessage, timestamp: new Date().toISOString() },
+        {
+          role: 'user',
+          content: chatMessage,
+          attachments: pendingAttachments,
+          timestamp: new Date().toISOString(),
+        },
       ],
     }))
 
     const msg = chatMessage
+    const atts = pendingAttachments
     setChatMessage('')
+    setChatAttachments([])
 
     try {
       const res = await fetch(`/api/sites/${id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, attachments: atts }),
       })
 
       if (res.ok) {
@@ -144,9 +181,9 @@ export default function SiteProjectPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {project.vercel_url && (
+          {(project.vercel_url || project.generated_code) && (
             <a
-              href={project.vercel_url}
+              href={project.vercel_url || `/api/sites/${id}/preview`}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:border-gray-400 transition"
@@ -178,32 +215,81 @@ export default function SiteProjectPage() {
 
       {/* Main content: Preview + Chat */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Preview iframe */}
-        <div className="flex-1 bg-gray-100 relative">
-          {isGenerating ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-              <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">
-                  {project.status === 'generating' ? 'Агент верстає сайт...' : 'Вносяться правки...'}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Орієнтовно 5–15 хвилин. Сторінка оновиться автоматично.
-                </p>
-              </div>
-            </div>
-          ) : project.vercel_url ? (
-            <iframe
-              ref={iframeRef}
-              src={project.vercel_url}
-              className="w-full h-full border-none"
-              title="Site preview"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-              Preview буде доступний після генерації
+        {/* Preview area */}
+        <div className="flex-1 flex flex-col bg-gray-100">
+          {/* Device toolbar */}
+          {!isGenerating && (project.vercel_url || project.generated_code) && (
+            <div className="flex items-center justify-center gap-1 px-4 py-2 bg-white border-b border-gray-200">
+              {(Object.keys(viewModes) as Array<keyof typeof viewModes>).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                    viewMode === mode
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                  }`}
+                  title={viewModes[mode].label}
+                >
+                  {mode === 'desktop' ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25Z" />
+                    </svg>
+                  ) : mode === 'tablet' ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25V4.5a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25Z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                    </svg>
+                  )}
+                  {viewModes[mode].label}
+                </button>
+              ))}
             </div>
           )}
+
+          {/* Preview iframe */}
+          <div className="flex-1 relative overflow-hidden flex items-start justify-center">
+            {isGenerating ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700">
+                    {project.status === 'generating' ? 'Агент верстає сайт...' : 'Вносяться правки...'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Орієнтовно 5–15 хвилин. Сторінка оновиться автоматично.
+                  </p>
+                </div>
+              </div>
+            ) : project.vercel_url || project.generated_code ? (
+              <div
+                className="h-full transition-all duration-300 ease-in-out"
+                style={{
+                  width: viewModes[viewMode].width,
+                  maxWidth: '100%',
+                  boxShadow: viewMode !== 'desktop' ? '0 0 0 1px rgba(0,0,0,0.08), 0 4px 24px rgba(0,0,0,0.12)' : 'none',
+                  borderRadius: viewMode !== 'desktop' ? '12px' : '0',
+                  overflow: 'hidden',
+                  margin: viewMode !== 'desktop' ? '16px auto' : '0',
+                }}
+              >
+                <iframe
+                  ref={iframeRef}
+                  src={project.vercel_url || `/api/sites/${id}/preview`}
+                  className="w-full border-none bg-white"
+                  style={{ height: viewMode !== 'desktop' ? 'calc(100% - 0px)' : '100%' }}
+                  title="Site preview"
+                />
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                Preview буде доступний після генерації
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Chat panel */}
@@ -215,7 +301,7 @@ export default function SiteProjectPage() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-            {chatHistory.length === 0 && !isGenerating && project.vercel_url && (
+            {chatHistory.length === 0 && !isGenerating && (project.vercel_url || project.generated_code) && (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-400">
                   Перегляньте сайт та напишіть тут правки.
@@ -236,6 +322,15 @@ export default function SiteProjectPage() {
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {msg.attachments?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {msg.attachments.map((att: any, j: number) => (
+                        <a key={j} href={att.url} target="_blank" rel="noopener noreferrer">
+                          <img src={att.url} alt={att.name} className="w-16 h-16 object-cover rounded-md border border-white/20" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <p className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-blue-200' : 'text-gray-400'}`}>
                     {new Date(msg.timestamp).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                   </p>
@@ -260,7 +355,46 @@ export default function SiteProjectPage() {
 
           {/* Input */}
           <div className="px-4 py-3 border-t border-gray-200">
+            {chatAttachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {chatAttachments.map((att, i) => (
+                  <div key={i} className="relative group">
+                    <img src={att.url} alt={att.name} className="w-12 h-12 object-cover rounded-lg border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => setChatAttachments(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex gap-2">
+              <input
+                ref={chatFileRef}
+                type="file"
+                multiple
+                accept="image/*"
+                className="hidden"
+                onChange={e => { handleChatFileUpload(e.target.files); e.target.value = '' }}
+              />
+              <button
+                type="button"
+                onClick={() => chatFileRef.current?.click()}
+                disabled={isGenerating || chatSending || chatUploading}
+                className="rounded-lg border border-gray-300 px-2.5 py-2 text-gray-400 hover:text-blue-600 hover:border-blue-400 disabled:opacity-50 transition"
+                title="Прикріпити зображення"
+              >
+                {chatUploading ? (
+                  <span className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin block" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                  </svg>
+                )}
+              </button>
               <input
                 type="text"
                 value={chatMessage}
@@ -272,7 +406,7 @@ export default function SiteProjectPage() {
               />
               <button
                 onClick={sendChatMessage}
-                disabled={isGenerating || chatSending || !chatMessage.trim()}
+                disabled={isGenerating || chatSending || (!chatMessage.trim() && !chatAttachments.length)}
                 className="rounded-lg bg-blue-600 px-3 py-2 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
               >
                 ↑

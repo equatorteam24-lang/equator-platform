@@ -18,10 +18,10 @@ export async function POST(
   if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { message } = body
+  const { message, attachments } = body as { message?: string; attachments?: { name: string; url: string }[] }
 
-  if (!message?.trim()) {
-    return NextResponse.json({ error: 'Повідомлення обов\'язкове' }, { status: 400 })
+  if (!message?.trim() && (!attachments || !attachments.length)) {
+    return NextResponse.json({ error: 'Повідомлення або файл обов\'язкові' }, { status: 400 })
   }
 
   const service = createServiceClient()
@@ -43,7 +43,9 @@ export async function POST(
     .eq('id', id)
 
   // Add user message to chat history
-  const chatHistory = [...(project.chat_history || []), { role: 'user', content: message, timestamp: new Date().toISOString() }]
+  const userMsg: Record<string, any> = { role: 'user', content: message || '', timestamp: new Date().toISOString() }
+  if (attachments?.length) userMsg.attachments = attachments
+  const chatHistory = [...(project.chat_history || []), userMsg]
 
   // Save chat history immediately
   await service.from('site_projects')
@@ -51,6 +53,13 @@ export async function POST(
     .eq('id', id)
 
   try {
+    // Build message for bridge (include attachment URLs so the agent can use them)
+    let bridgeMessage = message || ''
+    if (attachments?.length) {
+      bridgeMessage += '\n\n📎 Прикріплені файли:\n' + attachments.map(a => `- ${a.name}: ${a.url}`).join('\n')
+      bridgeMessage += '\n\n⚠️ Використай ці зображення на сайті в <img src="URL">.'
+    }
+
     // Send to bridge
     const bridgeRes = await fetch(`${BRIDGE_URL}/chat/${id}`, {
       method: 'POST',
@@ -58,7 +67,7 @@ export async function POST(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${BRIDGE_SECRET}`,
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message: bridgeMessage }),
     })
 
     if (!bridgeRes.ok) {
@@ -85,14 +94,23 @@ export async function POST(
 }
 
 async function pollChatJob(jobId: string, projectId: string, chatHistory: any[], service: any) {
+  let consecutiveFailures = 0
+  const MAX_FAILURES = 30
+
   const interval = setInterval(async () => {
     try {
       const res = await fetch(`${BRIDGE_URL}/job/${jobId}`, {
         headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
+        signal: AbortSignal.timeout(8000),
       })
 
-      if (!res.ok) { clearInterval(interval); return }
+      if (!res.ok) {
+        consecutiveFailures++
+        if (consecutiveFailures >= MAX_FAILURES) clearInterval(interval)
+        return
+      }
 
+      consecutiveFailures = 0
       const job = await res.json()
 
       if (job.status === 'done') {
@@ -122,7 +140,10 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
           updated_at: new Date().toISOString(),
         }).eq('id', projectId)
       }
-    } catch {}
+    } catch {
+      consecutiveFailures++
+      if (consecutiveFailures >= MAX_FAILURES) clearInterval(interval)
+    }
   }, 5000)
 
   // Stop after 15 minutes

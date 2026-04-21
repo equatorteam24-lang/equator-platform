@@ -2,6 +2,10 @@ import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
+const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
+const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
+const STALE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,7 +26,85 @@ export async function GET(
     return NextResponse.json({ error: 'Проект не знайдено' }, { status: 404 })
   }
 
+  // Self-healing: if stuck in generating/revising too long, check bridge directly
+  if (project.status === 'generating' || project.status === 'revising') {
+    const age = Date.now() - new Date(project.updated_at || project.created_at).getTime()
+    if (age > STALE_THRESHOLD_MS) {
+      const synced = await syncFromBridge(id, project, service)
+      if (synced) return NextResponse.json(synced)
+    }
+  }
+
   return NextResponse.json(project)
+}
+
+async function syncFromBridge(projectId: string, project: any, service: any) {
+  try {
+    // For chat revisions, try the latest chat job first
+    const jobIds = project.status === 'revising'
+      ? [`${projectId}-chat-latest`, projectId]
+      : [projectId]
+
+    for (const jobId of jobIds) {
+      try {
+        const res = await fetch(`${BRIDGE_URL}/job/${jobId}`, {
+          headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!res.ok) continue
+
+        const job = await res.json()
+
+        if (job.status === 'done') {
+          const updates: Record<string, any> = {
+            status: 'review',
+            updated_at: new Date().toISOString(),
+          }
+          if (job.generatedCode) updates.generated_code = job.generatedCode
+          if (job.vercelUrl) updates.vercel_url = job.vercelUrl
+
+          // For chat jobs, append output to chat history
+          if (project.status === 'revising' && job.output) {
+            const chatHistory = [...(project.chat_history || [])]
+            chatHistory.push({
+              role: 'assistant',
+              content: job.output,
+              timestamp: new Date().toISOString(),
+            })
+            updates.chat_history = chatHistory
+          }
+
+          const { data } = await service.from('site_projects')
+            .update(updates)
+            .eq('id', projectId)
+            .select()
+            .single()
+
+          console.log(`Self-healed project ${projectId}: ${project.status} → review`)
+          return data
+        }
+
+        if (job.status === 'error') {
+          const { data } = await service.from('site_projects')
+            .update({ status: 'draft', updated_at: new Date().toISOString() })
+            .eq('id', projectId)
+            .select()
+            .single()
+
+          console.log(`Self-healed project ${projectId}: ${project.status} → draft (error: ${job.error})`)
+          return data
+        }
+
+        // Still running — don't change anything
+        return null
+      } catch {
+        continue
+      }
+    }
+  } catch {
+    // Bridge unreachable — can't self-heal yet
+  }
+  return null
 }
 
 export async function PATCH(

@@ -81,8 +81,13 @@ export async function POST(
       return NextResponse.json({ status: 'replied', reply: aiReply })
     } catch (err: any) {
       console.error('AI chat error:', err)
-      // Don't fail the whole request — message is already saved
-      return NextResponse.json({ status: 'saved' })
+      const errorMsg = err?.error?.error?.message || err?.message || 'Невідома помилка AI'
+      const reply = `Не вдалося отримати відповідь: ${errorMsg}`
+      chatHistory.push({ role: 'assistant', content: reply, timestamp: new Date().toISOString() })
+      await service.from('site_projects')
+        .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
+        .eq('id', id)
+      return NextResponse.json({ status: 'replied', reply })
     }
   }
 
@@ -141,7 +146,7 @@ async function getChatReply(chatHistory: any[], project: any): Promise<string> {
   const systemContext = `${CHAT_SYSTEM_PROMPT}\n\nІнформація про проект:\n- Назва: ${project.name || 'Без назви'}\n- Компанія: ${project.form_data?.companyName || 'Невідомо'}\n- Статус: ${project.status}`
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 300,
     system: systemContext,
     messages: cleaned,

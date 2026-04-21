@@ -16,6 +16,23 @@ const SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
 const PROJECTS_DIR = path.join(__dirname, '..', 'tmp-sites')
 const JOBS_DIR = path.join(__dirname, 'jobs')
 
+// Load Supabase credentials from super-admin .env.local (if not in env)
+function loadEnvFile() {
+  const envPath = path.join(__dirname, '..', 'apps', 'super-admin', '.env.local')
+  if (!fs.existsSync(envPath)) return
+  const lines = fs.readFileSync(envPath, 'utf-8').split('\n')
+  for (const line of lines) {
+    const match = line.match(/^([A-Z_]+)=(.+)$/)
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2].trim().replace(/^["']|["']$/g, '')
+    }
+  }
+}
+loadEnvFile()
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+
 // Ensure dirs exist
 for (const dir of [PROJECTS_DIR, JOBS_DIR]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -70,6 +87,8 @@ function recoverOrphanedJobs() {
           error: 'Bridge restarted during generation. Please retry.',
           finishedAt: Date.now(),
         })
+        const orphanProjectId = jobId.split('-chat-')[0]
+        notifySupabase(orphanProjectId, { status: 'draft' })
       }
     } catch {}
   }
@@ -78,6 +97,19 @@ function recoverOrphanedJobs() {
 async function buildAndDeploy(jobId, projectDir, generatedCode) {
   let vercelUrl = null
   try {
+    // Reset vercel.json to known-good state (Claude CLI may have corrupted it)
+    fs.writeFileSync(path.join(projectDir, 'vercel.json'), JSON.stringify({
+      headers: [
+        {
+          source: "/(.*)",
+          headers: [
+            { key: "X-Frame-Options", value: "ALLOWALL" },
+            { key: "Content-Security-Policy", value: "frame-ancestors *" }
+          ]
+        }
+      ]
+    }, null, 2))
+
     execSync('npm install', { cwd: projectDir, timeout: 60000, stdio: 'pipe' })
     execSync('npx vite build', { cwd: projectDir, timeout: 60000, stdio: 'pipe' })
     const deployOutput = execSync(
@@ -100,7 +132,15 @@ async function buildAndDeploy(jobId, projectDir, generatedCode) {
     finishedAt: Date.now(),
     error: null,
   })
-  console.log(`Job ${jobId} recovered → ${vercelUrl || 'no deploy URL'}`)
+  console.log(`Job ${jobId} done → ${vercelUrl || 'no deploy URL'}`)
+
+  // Push to Supabase as safety net (in case polling died)
+  const projectId = jobId.split('-chat-')[0]
+  notifySupabase(projectId, {
+    status: 'review',
+    generated_code: generatedCode || null,
+    vercel_url: vercelUrl || null,
+  })
 }
 
 // ─── Disable Vercel SSO protection for deployed project ───
@@ -131,6 +171,28 @@ function disableVercelProtection(projectDir) {
     console.log(`SSO protection disabled for project ${projectId}`)
   } catch (err) {
     console.error('Failed to disable SSO protection:', err.message)
+  }
+}
+
+// ─── Push completion to Supabase (safety net) ───
+async function notifySupabase(projectId, updates) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/site_projects?id=eq.${projectId}`
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ ...updates, updated_at: new Date().toISOString() }),
+    })
+    if (res.ok) console.log(`Supabase notified: ${projectId} → ${updates.status}`)
+    else console.warn(`Supabase notify failed: ${projectId} → HTTP ${res.status}`)
+  } catch (err) {
+    console.warn(`Supabase notify error: ${projectId}`, err.message)
   }
 }
 
@@ -250,7 +312,7 @@ async function handleGenerateSite(req, res) {
   fs.writeFileSync(path.join(projectDir, 'vite.config.js'),
     `import { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nexport default defineConfig({ plugins: [react()] })\n`)
 
-  // Vercel config: disable SSO protection + allow iframe embedding
+  // Vercel config: allow iframe embedding
   fs.writeFileSync(path.join(projectDir, 'vercel.json'), JSON.stringify({
     headers: [
       {
@@ -260,8 +322,7 @@ async function handleGenerateSite(req, res) {
           { key: "Content-Security-Policy", value: "frame-ancestors *" }
         ]
       }
-    ],
-    oidcTokenConfig: { enabled: false }
+    ]
   }, null, 2))
 
   fs.writeFileSync(path.join(projectDir, 'index.html'),
@@ -300,10 +361,55 @@ async function handleGenerateSite(req, res) {
 
     } catch (err) {
       updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
+      notifySupabase(projectId, { status: 'draft' })
     }
   })()
 
   respond(res, 202, { jobId, status: 'running' })
+}
+
+// ─── Discuss: sync (quick chat, no code changes) ───
+async function handleDiscuss(req, res, projectId) {
+  const { message, history } = await parseBody(req)
+  if (!message?.trim()) return respond(res, 400, { error: 'message required' })
+
+  const projectDir = path.join(PROJECTS_DIR, projectId)
+
+  // Build context from recent history
+  let historyContext = ''
+  if (history?.length) {
+    const recent = history.slice(-10)
+    historyContext = '\n\n## ПОПЕРЕДНІ ПОВІДОМЛЕННЯ\n' + recent.map(m =>
+      `${m.role === 'user' ? 'Користувач' : 'Агент'}: ${m.content}`
+    ).join('\n')
+  }
+
+  const discussPrompt = `Ти — дизайн-консультант веб-агентства Equator. Відповідай коротко (2-4 речення), українською.
+
+Допомагай з:
+- Вибір кольорів, шрифтів, компонування
+- UX/UI поради
+- Структура сайту
+- Конкретні пропозиції
+
+Ти НЕ вносиш зміни в код — тільки консультуєш. Для внесення змін є окрема вкладка "Правки".
+${fs.existsSync(path.join(projectDir, 'src', 'App.jsx')) ? '\nПоточний сайт існує в ' + projectDir : ''}
+${historyContext}
+
+Користувач: ${message}
+
+Відповідай коротко і конкретно.`
+
+  try {
+    const output = await runClaude(discussPrompt, {
+      cwd: fs.existsSync(projectDir) ? projectDir : process.cwd(),
+      maxTurns: 1,
+      timeout: 60000,
+    })
+    respond(res, 200, { reply: output })
+  } catch (err) {
+    respond(res, 500, { error: err.message })
+  }
 }
 
 // ─── Chat revision: async ───
@@ -354,6 +460,7 @@ ${message}
 
     } catch (err) {
       updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
+      notifySupabase(projectId, { status: 'review' })
     }
   })()
 
@@ -388,6 +495,9 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/health') return handleHealth(res)
     if (req.method === 'POST' && pathname === '/parse-brief') return await handleParseBrief(req, res)
     if (req.method === 'POST' && pathname === '/generate-site') return await handleGenerateSite(req, res)
+
+    const discussMatch = pathname.match(/^\/discuss\/([a-f0-9-]+)$/)
+    if (req.method === 'POST' && discussMatch) return await handleDiscuss(req, res, discussMatch[1])
 
     const chatMatch = pathname.match(/^\/chat\/([a-f0-9-]+)$/)
     if (req.method === 'POST' && chatMatch) return await handleChat(req, res, chatMatch[1])

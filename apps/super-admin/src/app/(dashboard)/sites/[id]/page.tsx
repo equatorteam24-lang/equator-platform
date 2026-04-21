@@ -102,11 +102,11 @@ export default function SiteProjectPage() {
     setChatUploading(false)
   }
 
+  // Just save message to chat history (no bridge)
   const sendChatMessage = async () => {
     if ((!chatMessage.trim() && !chatAttachments.length) || chatSending) return
     setChatSending(true)
 
-    // Optimistic update
     const pendingAttachments = chatAttachments.length ? [...chatAttachments] : undefined
     setProject((prev: any) => ({
       ...prev,
@@ -127,22 +127,35 @@ export default function SiteProjectPage() {
     setChatAttachments([])
 
     try {
-      const res = await fetch(`/api/sites/${id}/chat`, {
+      await fetch(`/api/sites/${id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, attachments: atts }),
       })
+    } catch (err) {
+      console.error('Chat error:', err)
+    }
+    setChatSending(false)
+  }
 
+  // Send all accumulated messages to bridge for applying
+  const applyChanges = async () => {
+    if (chatSending) return
+    setChatSending(true)
+    try {
+      const res = await fetch(`/api/sites/${id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apply: true }),
+      })
       if (res.ok) {
-        // Refresh project to get updated data
         await fetchProject()
-        // Reload iframe
         if (iframeRef.current) {
           iframeRef.current.src = iframeRef.current.src
         }
       }
     } catch (err) {
-      console.error('Chat error:', err)
+      console.error('Apply error:', err)
     }
     setChatSending(false)
   }
@@ -181,6 +194,15 @@ export default function SiteProjectPage() {
   const status = statusConfig[project.status] ?? statusConfig.draft
   const isGenerating = project.status === 'generating' || project.status === 'revising'
   const chatHistory = project.chat_history || []
+
+  // Check if there are unprocessed user messages (after the last assistant message)
+  const hasUnprocessedMessages = (() => {
+    for (let i = chatHistory.length - 1; i >= 0; i--) {
+      if (chatHistory[i].role === 'assistant') return false
+      if (chatHistory[i].role === 'user') return true
+    }
+    return false
+  })()
 
   return (
     <div className="h-full flex flex-col">
@@ -314,7 +336,7 @@ export default function SiteProjectPage() {
         <div className="w-96 border-l border-gray-200 bg-white flex flex-col">
           <div className="px-4 py-3 border-b border-gray-200">
             <h2 className="text-sm font-semibold text-gray-700">Чат з агентом</h2>
-            <p className="text-xs text-gray-400">Описуйте правки — агент їх внесе</p>
+            <p className="text-xs text-gray-400">Опишіть правки, потім натисніть «Внести правки»</p>
           </div>
 
           {/* Messages */}
@@ -322,10 +344,10 @@ export default function SiteProjectPage() {
             {chatHistory.length === 0 && !isGenerating && (project.vercel_url || project.generated_code) && (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-400">
-                  Перегляньте сайт та напишіть тут правки.
+                  Напишіть одне або декілька повідомлень з правками.
                 </p>
                 <p className="text-xs text-gray-300 mt-1">
-                  Наприклад: «Зміни колір кнопки на червоний»
+                  Коли будете готові — натисніть «Внести правки»
                 </p>
               </div>
             )}
@@ -370,6 +392,22 @@ export default function SiteProjectPage() {
 
             <div ref={chatEndRef} />
           </div>
+
+          {/* Apply changes button */}
+          {hasUnprocessedMessages && !isGenerating && (
+            <div className="px-4 py-2 border-t border-gray-200 bg-orange-50">
+              <button
+                onClick={applyChanges}
+                disabled={chatSending}
+                className="w-full rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.964m11.49-9.642l1.15-.964M7.501 19.795l.75-1.3m7.5-12.99l.75-1.3m-6.063 16.658l.26-1.477m2.605-14.772l.26-1.477m0 17.726l-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205L12 12" />
+                </svg>
+                Внести правки
+              </button>
+            </div>
+          )}
 
           {/* Input */}
           <div className="px-4 py-3 border-t border-gray-200">

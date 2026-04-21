@@ -18,10 +18,10 @@ export async function POST(
   if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { message, attachments } = body as { message?: string; attachments?: { name: string; url: string }[] }
-
-  if (!message?.trim() && (!attachments || !attachments.length)) {
-    return NextResponse.json({ error: 'Повідомлення або файл обов\'язкові' }, { status: 400 })
+  const { message, attachments, apply } = body as {
+    message?: string
+    attachments?: { name: string; url: string }[]
+    apply?: boolean
   }
 
   const service = createServiceClient()
@@ -37,30 +37,48 @@ export async function POST(
     return NextResponse.json({ error: 'Проект не знайдено' }, { status: 404 })
   }
 
+  let chatHistory = [...(project.chat_history || [])]
+
+  // If there's a message, add it to chat history
+  if (message?.trim() || attachments?.length) {
+    const userMsg: Record<string, any> = { role: 'user', content: message || '', timestamp: new Date().toISOString() }
+    if (attachments?.length) userMsg.attachments = attachments
+    chatHistory.push(userMsg)
+
+    await service.from('site_projects')
+      .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
+      .eq('id', id)
+  }
+
+  // If not applying — just save the message, don't trigger bridge
+  if (!apply) {
+    return NextResponse.json({ status: 'saved' })
+  }
+
+  // === Apply mode: send to bridge ===
+
   // Update status to revising
   await service.from('site_projects')
     .update({ status: 'revising', updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Add user message to chat history
-  const userMsg: Record<string, any> = { role: 'user', content: message || '', timestamp: new Date().toISOString() }
-  if (attachments?.length) userMsg.attachments = attachments
-  const chatHistory = [...(project.chat_history || []), userMsg]
+  // Collect all unprocessed user messages since the last assistant message
+  const unprocessedMessages: string[] = []
+  for (let i = chatHistory.length - 1; i >= 0; i--) {
+    if (chatHistory[i].role === 'assistant') break
+    if (chatHistory[i].role === 'user') {
+      let text = chatHistory[i].content || ''
+      if (chatHistory[i].attachments?.length) {
+        text += '\n\n📎 Прикріплені файли:\n' + chatHistory[i].attachments.map((a: any) => `- ${a.name}: ${a.url}`).join('\n')
+        text += '\n\n⚠️ Використай ці зображення на сайті в <img src="URL">.'
+      }
+      unprocessedMessages.unshift(text)
+    }
+  }
 
-  // Save chat history immediately
-  await service.from('site_projects')
-    .update({ chat_history: chatHistory })
-    .eq('id', id)
+  const bridgeMessage = unprocessedMessages.join('\n\n---\n\n')
 
   try {
-    // Build message for bridge (include attachment URLs so the agent can use them)
-    let bridgeMessage = message || ''
-    if (attachments?.length) {
-      bridgeMessage += '\n\n📎 Прикріплені файли:\n' + attachments.map(a => `- ${a.name}: ${a.url}`).join('\n')
-      bridgeMessage += '\n\n⚠️ Використай ці зображення на сайті в <img src="URL">.'
-    }
-
-    // Send to bridge
     const bridgeRes = await fetch(`${BRIDGE_URL}/chat/${id}`, {
       method: 'POST',
       headers: {
@@ -77,7 +95,6 @@ export async function POST(
 
     const { jobId } = await bridgeRes.json()
 
-    // Poll for completion
     pollChatJob(jobId, id, chatHistory, service)
 
     return NextResponse.json({ status: 'revising', jobId })
@@ -146,6 +163,5 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
     }
   }, 5000)
 
-  // Stop after 15 minutes
   setTimeout(() => clearInterval(interval), 900000)
 }

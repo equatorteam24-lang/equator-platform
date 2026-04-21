@@ -70,13 +70,28 @@ export async function POST(
         .slice(-10)
         .map((m: any) => ({ role: m.role, content: m.content }))
 
+      const siteContext = {
+        name: project.name,
+        companyName: project.form_data?.companyName,
+        companyDescription: project.form_data?.companyDescription,
+        siteType: project.form_data?.siteType,
+        designStyle: project.form_data?.designStyle,
+        structure: project.form_data?.structure,
+        primaryColor: project.form_data?.primaryColor,
+        secondaryColor: project.form_data?.secondaryColor,
+        theme: project.form_data?.theme,
+        extraWishes: project.form_data?.extraWishes,
+        status: project.status,
+        vercelUrl: project.vercel_url,
+      }
+
       const bridgeRes = await fetch(`${BRIDGE_URL}/discuss/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${BRIDGE_SECRET}`,
         },
-        body: JSON.stringify({ message, history: discussHistory }),
+        body: JSON.stringify({ message, history: discussHistory, siteContext }),
         signal: AbortSignal.timeout(90000),
       })
 

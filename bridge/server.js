@@ -402,10 +402,8 @@ async function handleGenerateSite(req, res) {
 
 // ─── Discuss: sync (quick chat, no code changes) ───
 async function handleDiscuss(req, res, projectId) {
-  const { message, history } = await parseBody(req)
+  const { message, history, siteContext } = await parseBody(req)
   if (!message?.trim()) return respond(res, 400, { error: 'message required' })
-
-  const projectDir = path.join(PROJECTS_DIR, projectId)
 
   // Build context from recent history
   let historyContext = ''
@@ -416,20 +414,39 @@ async function handleDiscuss(req, res, projectId) {
     ).join('\n')
   }
 
+  // Build site info block
+  let siteInfo = ''
+  if (siteContext) {
+    const lines = []
+    if (siteContext.name) lines.push(`Назва проекту: ${siteContext.name}`)
+    if (siteContext.companyName) lines.push(`Компанія: ${siteContext.companyName}`)
+    if (siteContext.companyDescription) lines.push(`Опис: ${siteContext.companyDescription}`)
+    if (siteContext.siteType) lines.push(`Тип сайту: ${siteContext.siteType}`)
+    if (siteContext.designStyle) lines.push(`Стиль дизайну: ${siteContext.designStyle}`)
+    if (siteContext.primaryColor) lines.push(`Основний колір: ${siteContext.primaryColor}`)
+    if (siteContext.secondaryColor) lines.push(`Додатковий колір: ${siteContext.secondaryColor}`)
+    if (siteContext.theme) lines.push(`Тема: ${siteContext.theme}`)
+    if (siteContext.structure) lines.push(`Структура: ${siteContext.structure}`)
+    if (siteContext.extraWishes) lines.push(`Побажання: ${siteContext.extraWishes}`)
+    if (siteContext.vercelUrl) lines.push(`URL сайту: ${siteContext.vercelUrl}`)
+    if (lines.length) siteInfo = '\n\n## ПОТОЧНИЙ САЙТ\n' + lines.join('\n')
+  }
+
   const discussPrompt = `Ти — дизайн-консультант веб-агентства Equator. Відповідай коротко (2-4 речення), українською.
+${siteInfo}
 
 Допомагай з:
-- Вибір кольорів, шрифтів, компонування
-- UX/UI поради
+- Вибір кольорів, шрифтів, компонування саме для цього сайту
+- UX/UI поради враховуючи нішу та стиль клієнта
 - Структура сайту
 - Конкретні пропозиції
 
-Ти НЕ вносиш зміни в код — тільки консультуєш. НЕ використовуй жодних інструментів — просто відповідай текстом.
+Давай поради саме в контексті цього конкретного сайту та бізнесу клієнта. Ти НЕ вносиш зміни — тільки консультуєш.
 ${historyContext}
 
 Користувач: ${message}
 
-Відповідай коротко і конкретно. Не читай файли, не використовуй інструменти.`
+Відповідай коротко і конкретно.`
 
   try {
     const output = await runClaudeChat(discussPrompt, { timeout: 60000 })

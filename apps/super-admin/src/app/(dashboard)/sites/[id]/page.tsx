@@ -78,6 +78,46 @@ export default function SiteProjectPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [project?.chat_history, chatTab])
 
+  // Compress image client-side to stay under Vercel 4.5MB body limit
+  const compressImage = (file: File, maxSizeMB = 3): Promise<File> => {
+    return new Promise((resolve) => {
+      // Skip non-images or already small files
+      if (!file.type.startsWith('image/') || file.size <= maxSizeMB * 1024 * 1024) {
+        resolve(file)
+        return
+      }
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        // Scale down large images (max 2000px on longest side)
+        const maxDim = 2000
+        let { width, height } = img
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height)
+          width = Math.round(width * scale)
+          height = Math.round(height * scale)
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }))
+            } else {
+              resolve(file)
+            }
+          },
+          'image/jpeg',
+          0.85
+        )
+      }
+      img.onerror = () => resolve(file)
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items
     if (!items) return
@@ -102,13 +142,15 @@ export default function SiteProjectPage() {
   const uploadFiles = async (files: File[]) => {
     if (!files.length) return
     setChatUploading(true)
-    const formData = new FormData()
-    for (const file of files) {
-      formData.append('files', file)
-    }
-    formData.append('folder', 'chat')
-    formData.append('projectId', id)
     try {
+      // Compress images to fit Vercel 4.5MB body limit
+      const compressed = await Promise.all(files.map(f => compressImage(f)))
+      const formData = new FormData()
+      for (const file of compressed) {
+        formData.append('files', file)
+      }
+      formData.append('folder', 'chat')
+      formData.append('projectId', id)
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
       const text = await res.text()
       let data: any

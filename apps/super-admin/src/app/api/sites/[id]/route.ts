@@ -40,9 +40,19 @@ export async function GET(
 
 async function syncFromBridge(projectId: string, project: any, service: any) {
   try {
-    // For chat revisions, try the latest chat job first
+    // For chat revisions, extract jobId from the last status message in chat_history
+    let storedJobId: string | undefined
+    if (project.status === 'revising' && project.chat_history?.length) {
+      for (let i = project.chat_history.length - 1; i >= 0; i--) {
+        const msg = project.chat_history[i]
+        if (msg.source === 'status' && msg.tab === 'revisions' && msg.jobId) {
+          storedJobId = msg.jobId
+          break
+        }
+      }
+    }
     const jobIds = project.status === 'revising'
-      ? [`${projectId}-chat-latest`, projectId]
+      ? [storedJobId, projectId].filter(Boolean)
       : [projectId]
 
     for (const jobId of jobIds) {
@@ -69,6 +79,8 @@ async function syncFromBridge(projectId: string, project: any, service: any) {
             chatHistory.push({
               role: 'assistant',
               content: job.output,
+              tab: 'revisions',
+              source: 'bridge',
               timestamp: new Date().toISOString(),
             })
             updates.chat_history = chatHistory

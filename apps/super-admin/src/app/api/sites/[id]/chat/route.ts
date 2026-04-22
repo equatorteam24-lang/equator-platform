@@ -185,6 +185,13 @@ async function handleApply(id: string, chatHistory: any[], service: any) {
 
     const { jobId } = await bridgeRes.json()
 
+    // Store jobId in the status message so self-healing GET can find it
+    const statusMsg = chatHistory.findLast((m: any) => m.source === 'status' && m.tab === 'revisions')
+    if (statusMsg) statusMsg.jobId = jobId
+    await service.from('site_projects')
+      .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
+      .eq('id', id)
+
     pollChatJob(jobId, id, chatHistory, service)
 
     return NextResponse.json({ status: 'revising', jobId })

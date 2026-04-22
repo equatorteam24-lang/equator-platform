@@ -184,7 +184,7 @@ function Hero({ onCta }) {
         <div className="hero-overlay" />
         <div className="hero-content">
           <h1 className={`hero-title ${loaded ? 'hero-title-visible' : ''}`}>
-            Корпоративні подорожі, які <span className="text-accent-light">змінюють бізнес</span> на краще
+            Корпоративні подорожі, які змінюють бізнес на краще
           </h1>
           <p className={`hero-desc ${loaded ? 'hero-desc-visible' : ''}`}>
             Створюємо індивідуальні бізнес-тури, мотиваційні поїздки та корпоративні івенти по всьому світу — з чітким фокусом на результат: лояльність клієнтів, ефективність команд і зростання показників.
@@ -313,7 +313,7 @@ function AccentCta({ onCta }) {
       <div className="accent-cta-fade-bottom" />
       <div className="container accent-cta-inner">
         <Animate>
-          <h2 className="accent-cta-heading">Ми можемо все — від <span className="text-accent-light">ідеї до реалізації</span></h2>
+          <h2 className="accent-cta-heading">Ми можемо все — від ідеї до реалізації</h2>
           <p className="accent-cta-text">Створюємо корпоративні подорожі будь-якого формату, масштабу та складності — з урахуванням ваших бізнес-цілей, аудиторії та очікуваного результату.</p>
           <button className="btn-primary btn-accent-cta" onClick={onCta}>Отримати концепцію</button>
         </Animate>
@@ -557,7 +557,7 @@ function Research() {
       <div className="container research-inner">
         <Animate>
           <span className="section-label section-label-light">Чому це працює</span>
-          <h2 className="research-heading">Подорожі — це не просто враження.<br />Це <span className="text-accent-light">інвестиція</span> з вимірюваним результатом.</h2>
+          <h2 className="research-heading">Подорожі — це не просто враження.<br />Це інвестиція з вимірюваним результатом.</h2>
           <p className="research-subtitle">Бізнес по всьому світу вже використовує корпоративні поїздки як стратегічний інструмент. Ось що показують дані глобальних досліджень:</p>
         </Animate>
         <div className="research-stats">
@@ -626,7 +626,7 @@ function CtaSection({ onCta }) {
       <div className="cta-v2-fade-bottom" />
       <div className="container cta-v2-inner">
         <Animate>
-          <h2 className="cta-v2-heading">Готові створити <span className="text-accent-light">подорож</span>,<br />яка змінить ваш бізнес?</h2>
+          <h2 className="cta-v2-heading">Готові створити подорож,<br />яка змінить ваш бізнес?</h2>
           <p className="cta-v2-text">Залиште заявку — ми підготуємо індивідуальну концепцію під ваші цілі та бюджет</p>
           <button className="btn-primary btn-accent-cta" onClick={onCta}>Отримати концепцію</button>
         </Animate>

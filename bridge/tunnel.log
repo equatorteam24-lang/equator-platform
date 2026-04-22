@@ -154,3 +154,7 @@
 2026-04-22T17:16:06Z ERR Request failed error="Incoming request ended abruptly: context canceled" connIndex=0 dest=https://yourself-annotated-rotary-vary.trycloudflare.com/job/a05a85ca-fbb5-4684-81f6-832deac1c4b8-chat-1776878114494 event=0 ip=198.41.192.7 type=http
 2026-04-22T17:16:11Z ERR  error="Incoming request ended abruptly: context canceled" connIndex=0 event=1 ingressRule=0 originService=http://localhost:3001
 2026-04-22T17:16:11Z ERR Request failed error="Incoming request ended abruptly: context canceled" connIndex=0 dest=https://yourself-annotated-rotary-vary.trycloudflare.com/job/a05a85ca-fbb5-4684-81f6-832deac1c4b8-chat-1776878114494 event=0 ip=198.41.192.7 type=http
+2026-04-22T17:18:41Z ERR  error="Incoming request ended abruptly: context canceled" connIndex=0 event=1 ingressRule=0 originService=http://localhost:3001
+2026-04-22T17:18:41Z ERR Request failed error="Incoming request ended abruptly: context canceled" connIndex=0 dest=https://yourself-annotated-rotary-vary.trycloudflare.com/job/a05a85ca-fbb5-4684-81f6-832deac1c4b8-chat-1776878254705 event=0 ip=198.41.192.7 type=http
+2026-04-22T17:18:46Z ERR  error="Incoming request ended abruptly: context canceled" connIndex=0 event=1 ingressRule=0 originService=http://localhost:3001
+2026-04-22T17:18:46Z ERR Request failed error="Incoming request ended abruptly: context canceled" connIndex=0 dest=https://yourself-annotated-rotary-vary.trycloudflare.com/job/a05a85ca-fbb5-4684-81f6-832deac1c4b8-chat-1776878254705 event=0 ip=198.41.192.7 type=http

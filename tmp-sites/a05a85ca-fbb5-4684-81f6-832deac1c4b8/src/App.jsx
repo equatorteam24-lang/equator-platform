@@ -1260,20 +1260,15 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   background: var(--bg-warm);
 }
 .specials-2row {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.specials-row-top {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 20px;
-  align-items: stretch;
-}
-.specials-row-bottom {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
+}
+.specials-row-top {
+  display: contents;
+}
+.specials-row-bottom {
+  display: contents;
 }
 
 .specials-card {
@@ -1281,7 +1276,6 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   border-radius: 20px;
   padding: 32px;
   transition: all 0.4s ease;
-  min-height: 180px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1765,6 +1759,8 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 /* ─── Responsive ─── */
 @media (max-width: 1024px) {
   .container { padding: 0 30px; }
+  .hero-content { max-width: 85%; }
+  .hero-desc { max-width: 100%; }
   .section-title { margin-bottom: 50px; }
   .section-subtitle { margin-bottom: 50px; }
   .section-title + .section-subtitle { margin-top: -30px; }
@@ -1772,7 +1768,7 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   .research-subtitle { margin-bottom: 50px; }
   .whyus-cards { grid-template-columns: repeat(2, 1fr); }
   .service-accordion-img { width: 50%; min-width: 50%; height: 200px; }
-  .specials-row-top, .specials-row-bottom { gap: 20px; }
+  .specials-2row { grid-template-columns: repeat(2, 1fr); gap: 20px; }
   .specials-circle { width: 220px; height: 220px; }
   .research-stats { grid-template-columns: repeat(2, 1fr); }
   .footer-top { grid-template-columns: 1fr 1fr; }
@@ -1798,7 +1794,8 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 
   .hero { padding: 80px 16px 16px; }
   .hero-media { height: calc(100vh - 96px); min-height: 500px; border-radius: 32px; }
-  .hero-content { padding: 40px 32px; }
+  .hero-content { padding: 40px 32px; max-width: 100%; }
+  .hero-desc { max-width: 100%; }
 
   .intro-grid { grid-template-columns: 1fr; gap: 40px; }
   .mission-grid { grid-template-columns: 1fr; }
@@ -1807,11 +1804,7 @@ input, textarea { font-family: inherit; font-size: 1rem; }
   .service-accordion-content { flex-direction: column; gap: 20px; }
   .service-accordion-img { width: 100%; min-width: 100%; height: 200px; }
   .service-accordion-title { font-size: 1rem; }
-  .specials-row-top {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .specials-row-bottom {
+  .specials-2row {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -1845,7 +1838,8 @@ input, textarea { font-family: inherit; font-size: 1rem; }
 @media (max-width: 480px) {
   .hero { padding: 76px 12px 12px; }
   .hero-media { border-radius: 24px; }
-  .hero-content { padding: 32px 24px; }
+  .hero-content { padding: 32px 24px; max-width: 100%; }
+  .hero-desc { max-width: 100%; }
   .specials-circle { width: 180px; height: 180px; }
   .research-stats { grid-template-columns: 1fr; }
 }

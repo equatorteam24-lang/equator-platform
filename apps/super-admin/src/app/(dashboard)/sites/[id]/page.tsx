@@ -73,10 +73,18 @@ export default function SiteProjectPage() {
     return () => clearInterval(interval)
   }, [id])
 
-  // Scroll chat to bottom when tab or history changes
+  // Scroll chat to bottom only when new messages arrive or tab switches
+  const chatLengthRef = useRef(0)
+  useEffect(() => {
+    const len = project?.chat_history?.length || 0
+    if (len !== chatLengthRef.current) {
+      chatLengthRef.current = len
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [project?.chat_history?.length])
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [project?.chat_history, chatTab])
+  }, [chatTab])
 
   // Compress image client-side to stay under Vercel 4.5MB body limit
   const compressImage = (file: File, maxSizeMB = 3): Promise<File> => {

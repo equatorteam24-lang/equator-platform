@@ -490,8 +490,8 @@ ${message}
     try {
       const output = await runClaude(chatPrompt, {
         cwd: projectDir,
-        maxTurns: 15,
-        timeout: 600000,
+        maxTurns: 30,
+        timeout: 900000,
       })
 
       let generatedCode = ''

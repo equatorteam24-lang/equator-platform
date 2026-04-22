@@ -68,7 +68,13 @@ export async function POST(
       const discussHistory = chatHistory
         .filter((m: any) => !m.tab || m.tab === 'discuss')
         .slice(-10)
-        .map((m: any) => ({ role: m.role, content: m.content }))
+        .map((m: any) => {
+          let content = m.content || ''
+          if (m.attachments?.length) {
+            content += '\n\n📎 Прикріплені файли:\n' + m.attachments.map((a: any) => `- ${a.name}: ${a.url}`).join('\n')
+          }
+          return { role: m.role, content }
+        })
 
       const siteContext = {
         name: project.name,
@@ -85,13 +91,19 @@ export async function POST(
         vercelUrl: project.vercel_url,
       }
 
+      // Include attachments in the current message text sent to bridge
+      let bridgeMessage = message || ''
+      if (attachments?.length) {
+        bridgeMessage += '\n\n📎 Прикріплені файли:\n' + attachments.map((a) => `- ${a.name}: ${a.url}`).join('\n')
+      }
+
       const bridgeRes = await fetch(`${BRIDGE_URL}/discuss/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${BRIDGE_SECRET}`,
         },
-        body: JSON.stringify({ message, history: discussHistory, siteContext }),
+        body: JSON.stringify({ message: bridgeMessage, history: discussHistory, siteContext }),
         signal: AbortSignal.timeout(90000),
       })
 

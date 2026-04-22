@@ -90,28 +90,43 @@ export default function SiteProjectPage() {
     }
     if (imageFiles.length) {
       e.preventDefault()
-      const dt = new DataTransfer()
-      imageFiles.forEach(f => dt.items.add(f))
-      handleChatFileUpload(dt.files)
+      uploadFiles(imageFiles)
     }
   }
 
-  const handleChatFileUpload = async (files: FileList | null) => {
-    if (!files?.length) return
+  const handleChatFileUpload = (fileList: FileList | null) => {
+    if (!fileList?.length) return
+    uploadFiles(Array.from(fileList))
+  }
+
+  const uploadFiles = async (files: File[]) => {
+    if (!files.length) return
     setChatUploading(true)
     const formData = new FormData()
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       formData.append('files', file)
     }
     formData.append('folder', 'chat')
     formData.append('projectId', id)
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      if (res.ok) {
-        const data = await res.json()
-        setChatAttachments(prev => [...prev, ...data.files.map((f: any) => ({ name: f.name, url: f.url }))])
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        redirect: 'error',
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        let errMsg = 'Помилка завантаження'
+        try { errMsg = JSON.parse(text).error || errMsg } catch {}
+        throw new Error(errMsg)
       }
-    } catch {}
+      const data = await res.json()
+      if (!data.files?.length) throw new Error('Сервер не повернув файли')
+      setChatAttachments(prev => [...prev, ...data.files.map((f: any) => ({ name: f.name, url: f.url }))])
+    } catch (err: any) {
+      console.error('Upload error:', err)
+      alert(err?.message || 'Помилка завантаження файлу')
+    }
     setChatUploading(false)
   }
 

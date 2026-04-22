@@ -109,18 +109,15 @@ export default function SiteProjectPage() {
     formData.append('folder', 'chat')
     formData.append('projectId', id)
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        redirect: 'error',
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        let errMsg = 'Помилка завантаження'
-        try { errMsg = JSON.parse(text).error || errMsg } catch {}
-        throw new Error(errMsg)
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      const text = await res.text()
+      let data: any
+      try { data = JSON.parse(text) } catch {
+        throw new Error(`Сервер повернув не JSON (status ${res.status}): ${text.slice(0, 100)}`)
       }
-      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || `Помилка ${res.status}`)
+      }
       if (!data.files?.length) throw new Error('Сервер не повернув файли')
       setChatAttachments(prev => [...prev, ...data.files.map((f: any) => ({ name: f.name, url: f.url }))])
     } catch (err: any) {

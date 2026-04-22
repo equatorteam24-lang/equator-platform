@@ -700,7 +700,7 @@ export default function SiteProjectPage() {
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-end">
               <input
                 ref={chatFileRef}
                 type="file"
@@ -713,7 +713,7 @@ export default function SiteProjectPage() {
                 type="button"
                 onClick={() => chatFileRef.current?.click()}
                 disabled={isGenerating || chatSending || chatUploading}
-                className="rounded-lg border border-gray-300 px-2.5 py-2 text-gray-400 hover:text-blue-600 hover:border-blue-400 disabled:opacity-50 transition"
+                className="rounded-lg border border-gray-300 px-2.5 py-2 text-gray-400 hover:text-blue-600 hover:border-blue-400 disabled:opacity-50 transition shrink-0"
                 title="Прикріпити зображення"
               >
                 {chatUploading ? (
@@ -724,12 +724,12 @@ export default function SiteProjectPage() {
                   </svg>
                 )}
               </button>
-              <input
-                type="text"
+              <textarea
                 value={chatMessage}
                 onChange={e => setChatMessage(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                 onPaste={handlePaste}
+                rows={3}
                 placeholder={
                   isGenerating
                     ? 'Зачекайте...'
@@ -738,12 +738,12 @@ export default function SiteProjectPage() {
                       : 'Опишіть правку...'
                 }
                 disabled={isGenerating || chatSending}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 resize-none"
               />
               <button
                 onClick={handleSend}
                 disabled={isGenerating || chatSending || (!chatMessage.trim() && !chatAttachments.length)}
-                className={`rounded-lg px-3 py-2 text-white text-sm font-medium disabled:opacity-50 transition ${
+                className={`rounded-lg px-3 py-2 text-white text-sm font-medium disabled:opacity-50 transition shrink-0 ${
                   chatTab === 'revisions'
                     ? 'bg-orange-500 hover:bg-orange-600'
                     : 'bg-blue-600 hover:bg-blue-700'

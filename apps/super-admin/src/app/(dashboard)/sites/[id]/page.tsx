@@ -28,6 +28,10 @@ export default function SiteProjectPage() {
   const [chatTab, setChatTab] = useState<ChatTab>('discuss')
   const [chatOpen, setChatOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
+  const [versions, setVersions] = useState<{ hash: string; message: string }[]>([])
+  const [versionsOpen, setVersionsOpen] = useState(false)
+  const [versionSaving, setVersionSaving] = useState(false)
+  const [rollbackingHash, setRollbackingHash] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const chatFileRef = useRef<HTMLInputElement>(null)
@@ -85,6 +89,22 @@ export default function SiteProjectPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatTab])
+
+  // Fetch versions when panel opens
+  useEffect(() => {
+    if (versionsOpen) fetchVersions()
+  }, [versionsOpen])
+
+  // Close versions dropdown on outside click
+  useEffect(() => {
+    if (!versionsOpen) return
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-versions-panel]')) setVersionsOpen(false)
+    }
+    document.addEventListener('click', handleClick, { capture: true })
+    return () => document.removeEventListener('click', handleClick, { capture: true })
+  }, [versionsOpen])
 
   // Compress image client-side to stay under Vercel 4.5MB body limit
   const compressImage = (file: File, maxSizeMB = 3): Promise<File> => {
@@ -304,6 +324,50 @@ export default function SiteProjectPage() {
     else sendRevisionMessage()
   }
 
+  // Versions
+  const fetchVersions = async () => {
+    try {
+      const res = await fetch(`/api/sites/${id}/versions`)
+      if (res.ok) {
+        const data = await res.json()
+        setVersions(data.versions || [])
+      }
+    } catch {}
+  }
+
+  const saveVersion = async (label?: string) => {
+    setVersionSaving(true)
+    try {
+      const res = await fetch(`/api/sites/${id}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', label }),
+      })
+      if (res.ok) {
+        await fetchVersions()
+      }
+    } catch {}
+    setVersionSaving(false)
+  }
+
+  const rollbackToVersion = async (hash: string) => {
+    if (!confirm(`Відкатити сайт до версії ${hash}? Поточні зміни будуть збережені в історії.`)) return
+    setRollbackingHash(hash)
+    try {
+      const res = await fetch(`/api/sites/${id}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rollback', commit: hash }),
+      })
+      if (res.ok) {
+        await fetchProject()
+        await fetchVersions()
+        if (iframeRef.current) iframeRef.current.src = iframeRef.current.src
+      }
+    } catch {}
+    setRollbackingHash(null)
+  }
+
   const handleArchive = async () => {
     await fetch(`/api/sites/${id}`, {
       method: 'PATCH',
@@ -390,8 +454,86 @@ export default function SiteProjectPage() {
               Адмінка клієнта
             </Link>
           )}
+          {(project.vercel_url || project.generated_code) && !isGenerating && (
+            <>
+              <button
+                onClick={() => saveVersion()}
+                disabled={versionSaving}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 transition flex items-center gap-1.5"
+              >
+                {versionSaving ? (
+                  <span className="w-3.5 h-3.5 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                  </svg>
+                )}
+                Зберегти версію
+              </button>
+              <div className="relative" data-versions-panel>
+                <button
+                  onClick={() => setVersionsOpen(!versionsOpen)}
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition flex items-center gap-1.5 ${
+                    versionsOpen
+                      ? 'border-blue-400 text-blue-600 bg-blue-50'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                  Версії
+                </button>
+                {versionsOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">Історія версій</span>
+                      <button onClick={() => setVersionsOpen(false)} className="text-gray-400 hover:text-gray-600">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {versions.length === 0 ? (
+                        <p className="px-4 py-6 text-sm text-gray-400 text-center">Немає збережених версій</p>
+                      ) : (
+                        versions.map((v, i) => (
+                          <div key={v.hash} className={`px-4 py-2.5 flex items-center justify-between hover:bg-gray-50 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-gray-700 truncate">{v.message}</p>
+                              <p className="text-[10px] text-gray-400 font-mono">{v.hash}</p>
+                            </div>
+                            {i > 0 && (
+                              <button
+                                onClick={() => rollbackToVersion(v.hash)}
+                                disabled={rollbackingHash !== null}
+                                className="ml-3 shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:text-orange-600 hover:border-orange-300 disabled:opacity-50 transition"
+                              >
+                                {rollbackingHash === v.hash ? (
+                                  <span className="w-3 h-3 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin inline-block" />
+                                ) : (
+                                  'Відкатити'
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
           {project.status === 'review' && (
-            <button className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-green-700 transition">
+            <button
+              onClick={async () => {
+                await saveVersion('publish')
+                // proceed with publish
+              }}
+              className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-green-700 transition"
+            >
               Опублікувати
             </button>
           )}

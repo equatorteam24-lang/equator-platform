@@ -135,12 +135,14 @@ async function buildAndDeploy(jobId, projectDir, generatedCode) {
   console.log(`Job ${jobId} done → ${vercelUrl || 'no deploy URL'}`)
 
   // Push to Supabase as safety net (in case polling died)
-  const projectId = jobId.split('-chat-')[0]
+  const isChatJob = jobId.includes('-chat-')
+  const projectId = isChatJob ? jobId.split('-chat-')[0] : jobId
+  const job = loadJob(jobId)
   notifySupabase(projectId, {
     status: 'review',
     generated_code: generatedCode || null,
     vercel_url: vercelUrl || null,
-  })
+  }, isChatJob ? (job?.output || 'Зміни застосовано.') : null)
 }
 
 // ─── Disable Vercel SSO protection for deployed project ───
@@ -175,9 +177,36 @@ function disableVercelProtection(projectDir) {
 }
 
 // ─── Push completion to Supabase (safety net) ───
-async function notifySupabase(projectId, updates) {
+async function notifySupabase(projectId, updates, chatOutput) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return
   try {
+    // If we have chat output, first fetch current chat_history to append to it
+    if (chatOutput) {
+      try {
+        const getUrl = `${SUPABASE_URL}/rest/v1/site_projects?id=eq.${projectId}&select=chat_history`
+        const getRes = await fetch(getUrl, {
+          headers: {
+            'apikey': SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          },
+        })
+        if (getRes.ok) {
+          const [row] = await getRes.json()
+          const chatHistory = [...(row?.chat_history || [])]
+          chatHistory.push({
+            role: 'assistant',
+            content: chatOutput,
+            tab: 'revisions',
+            source: 'bridge',
+            timestamp: new Date().toISOString(),
+          })
+          updates.chat_history = chatHistory
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch chat_history for append: ${err.message}`)
+      }
+    }
+
     const url = `${SUPABASE_URL}/rest/v1/site_projects?id=eq.${projectId}`
     const res = await fetch(url, {
       method: 'PATCH',
@@ -219,7 +248,7 @@ function respond(res, status, data) {
 }
 
 function runClaude(prompt, options = {}) {
-  const { cwd, maxTurns, timeout } = options
+  const { cwd, maxTurns, timeout, allowedTools } = options
   const args = [
     '-p', prompt,
     '--output-format', 'text',
@@ -227,6 +256,7 @@ function runClaude(prompt, options = {}) {
     '--verbose',
   ]
   if (maxTurns) args.push('--max-turns', String(maxTurns))
+  if (allowedTools) args.push('--allowedTools', allowedTools)
 
   return new Promise((resolve, reject) => {
     let stdout = ''
@@ -384,12 +414,18 @@ async function handleGenerateSite(req, res) {
         if (srcFiles.length > 0) generatedCode = fs.readFileSync(path.join(projectDir, 'src', srcFiles[0]), 'utf-8')
       }
 
+      // Save output before build so it's available for notifySupabase
+      updateJob(jobId, { output })
+
+      // Init git and make first commit for version history
+      try {
+        execSync('git init', { cwd: projectDir, stdio: 'pipe' })
+        execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
+        execSync('git commit -m "initial site generation"', { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' } })
+      } catch (e) { console.error('Git init error:', e.message) }
+
       // Build & deploy
       await buildAndDeploy(jobId, projectDir, generatedCode)
-
-      // Update output
-      const job = loadJob(jobId)
-      if (job) updateJob(jobId, { output })
 
     } catch (err) {
       updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
@@ -467,6 +503,11 @@ async function handleChat(req, res, projectId) {
   const jobId = `${projectId}-chat-${Date.now()}`
   saveJob(jobId, { status: 'running', projectId, startedAt: Date.now() })
 
+  // Read current App.jsx so the agent sees the ACTUAL current state
+  let currentCode = ''
+  try { currentCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8') }
+  catch {}
+
   const chatPrompt = `
 # КОНТЕКСТ
 Ти — агент-конструктор сайтів Equator Agency.
@@ -476,14 +517,26 @@ async function handleChat(req, res, projectId) {
 ⛔ Заборонено: доступ поза проектом, батьківські директорії, системні команди, .env файли.
 ✅ Дозволено: файли в поточній папці, npm пакети локально, build/dev команди.
 
+## ⚠️ КРИТИЧНО: ПРАВИЛА РЕДАГУВАННЯ
+1. Нижче наведено АКТУАЛЬНИЙ код src/App.jsx — це єдине джерело правди.
+2. Вноси ТІЛЬКИ ті зміни, які просить дизайнер. Не змінюй нічого іншого.
+3. Використовуй інструмент Edit для точкових змін. НЕ перезаписуй весь файл через Write.
+4. Якщо потрібно змінити багато місць — роби кілька Edit викликів, але кожен — точковий.
+5. ЗАБОРОНЕНО генерувати файл з пам'яті. Працюй ТІЛЬКИ з кодом, наведеним нижче.
+
+## ПОТОЧНИЙ КОД src/App.jsx
+\`\`\`jsx
+${currentCode}
+\`\`\`
+
 ## ЗАПИТ ВІД ДИЗАЙНЕРА
 ${message}
 
 ## ЩО РОБИТИ
-- Дизайн → редагуй src/App.jsx
+- Дизайн → редагуй src/App.jsx (використовуй Edit, не Write)
 - Нові функції (Google Maps, слайдер) → встанови npm пакет і підключи
 - Етап 2 (адмінка, Supabase, CRM, аналітика, SEO, Telegram) → підключи інтеграцію
-- Після змін — підтверди що змінено
+- Після змін — підтверди що саме змінено (список конкретних змін)
 `
 
   ;(async () => {
@@ -492,15 +545,24 @@ ${message}
         cwd: projectDir,
         maxTurns: 30,
         timeout: 900000,
+        allowedTools: 'Read,Edit,Bash,Glob,Grep',
       })
 
       let generatedCode = ''
       try { generatedCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8') }
       catch {}
 
+      // Commit changes so we have version history for rollbacks
+      try {
+        execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
+        const commitMsg = message.slice(0, 100).replace(/"/g, '\\"')
+        execSync(`git commit -m "edit: ${commitMsg}"`, { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' } })
+      } catch (e) { console.error('Git commit error:', e.message) }
+
+      // Save output before build so notifySupabase in buildAndDeploy can read it
+      updateJob(jobId, { output })
+
       await buildAndDeploy(jobId, projectDir, generatedCode)
-      const job = loadJob(jobId)
-      if (job) updateJob(jobId, { output })
 
     } catch (err) {
       updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
@@ -509,6 +571,81 @@ ${message}
   })()
 
   respond(res, 202, { jobId, status: 'running' })
+}
+
+// ─── Version history ───
+function handleVersions(res, projectId) {
+  const projectDir = path.join(PROJECTS_DIR, projectId)
+  if (!fs.existsSync(projectDir)) return respond(res, 404, { error: 'project not found' })
+
+  try {
+    const log = execSync('git log --oneline --max-count=20', { cwd: projectDir, encoding: 'utf-8' })
+    const versions = log.trim().split('\n').filter(Boolean).map(line => {
+      const [hash, ...rest] = line.split(' ')
+      return { hash, message: rest.join(' ') }
+    })
+    respond(res, 200, { versions })
+  } catch {
+    respond(res, 200, { versions: [], note: 'no git history (project created before versioning)' })
+  }
+}
+
+// ─── Rollback ───
+async function handleRollback(req, res, projectId) {
+  const projectDir = path.join(PROJECTS_DIR, projectId)
+  if (!fs.existsSync(projectDir)) return respond(res, 404, { error: 'project not found' })
+
+  const { commit } = await parseBody(req)
+  const target = commit || 'HEAD~1'  // default: one step back
+
+  const jobId = `${projectId}-chat-${Date.now()}`
+  saveJob(jobId, { status: 'running', projectId, startedAt: Date.now() })
+
+  ;(async () => {
+    try {
+      // Restore files from target commit
+      execSync(`git checkout ${target} -- .`, { cwd: projectDir, stdio: 'pipe' })
+      execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
+      execSync(`git commit -m "rollback to ${target}"`, { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' } })
+
+      let generatedCode = ''
+      try { generatedCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8') }
+      catch {}
+
+      updateJob(jobId, { output: `Rolled back to ${target}` })
+      await buildAndDeploy(jobId, projectDir, generatedCode)
+    } catch (err) {
+      updateJob(jobId, { status: 'error', error: err.message, finishedAt: Date.now() })
+      notifySupabase(projectId, { status: 'review' })
+    }
+  })()
+
+  respond(res, 202, { jobId, status: 'running', rollbackTo: target })
+}
+
+// ─── Snapshot (manual save) ───
+async function handleSnapshot(req, res, projectId) {
+  const projectDir = path.join(PROJECTS_DIR, projectId)
+  if (!fs.existsSync(projectDir)) return respond(res, 404, { error: 'project not found' })
+
+  const { label } = await parseBody(req)
+  const commitMsg = `snapshot: ${(label || 'manual save').slice(0, 100)}`
+
+  try {
+    // Init git if not exists
+    if (!fs.existsSync(path.join(projectDir, '.git'))) {
+      execSync('git init', { cwd: projectDir, stdio: 'pipe' })
+    }
+    execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
+    execSync(`git commit --allow-empty -m "${commitMsg.replace(/"/g, '\\"')}"`, {
+      cwd: projectDir, stdio: 'pipe',
+      env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' },
+    })
+    const hash = execSync('git rev-parse --short HEAD', { cwd: projectDir, encoding: 'utf-8' }).trim()
+    respond(res, 200, { status: 'saved', hash, message: commitMsg })
+  } catch (err) {
+    respond(res, 500, { error: err.message })
+  }
 }
 
 // ─── Job status ───
@@ -545,6 +682,15 @@ const server = http.createServer(async (req, res) => {
 
     const chatMatch = pathname.match(/^\/chat\/([a-f0-9-]+)$/)
     if (req.method === 'POST' && chatMatch) return await handleChat(req, res, chatMatch[1])
+
+    const versionsMatch = pathname.match(/^\/versions\/([a-f0-9-]+)$/)
+    if (req.method === 'GET' && versionsMatch) return handleVersions(res, versionsMatch[1])
+
+    const rollbackMatch = pathname.match(/^\/rollback\/([a-f0-9-]+)$/)
+    if (req.method === 'POST' && rollbackMatch) return await handleRollback(req, res, rollbackMatch[1])
+
+    const snapshotMatch = pathname.match(/^\/snapshot\/([a-f0-9-]+)$/)
+    if (req.method === 'POST' && snapshotMatch) return await handleSnapshot(req, res, snapshotMatch[1])
 
     const jobMatch = pathname.match(/^\/job\/([a-f0-9-]+(?:-chat-\d+)?)$/)
     if (req.method === 'GET' && jobMatch) return handleJobStatus(res, jobMatch[1])

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
-import type { Organization, OrganizationSettings } from '@equator/db/types'
+import type { Organization, OrganizationSettings, ScriptFile } from '@equator/db/types'
 
 export default function SettingsForm({ org }: { org: Organization }) {
   const router = useRouter()
@@ -12,9 +12,37 @@ export default function SettingsForm({ org }: { org: Organization }) {
   const [domain, setDomain] = useState(org.domain ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function updateSetting<K extends keyof OrganizationSettings>(key: K, value: OrganizationSettings[K]) {
     setSettings(s => ({ ...s, [key]: value }))
+  }
+
+  async function uploadScriptFile(file: File, position: 'head' | 'body') {
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!res.ok) throw new Error('Upload failed')
+      const { url } = await res.json()
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      const type: ScriptFile['type'] = ext === 'css' ? 'css' : 'js'
+      const newFile: ScriptFile = { url, name: file.name, type, position }
+      updateSetting('custom_script_files', [...(settings.custom_script_files ?? []), newFile])
+    } catch (e) {
+      alert('Помилка завантаження файлу: ' + (e instanceof Error ? e.message : 'невідома помилка'))
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function removeScriptFile(index: number) {
+    const files = [...(settings.custom_script_files ?? [])]
+    files.splice(index, 1)
+    updateSetting('custom_script_files', files)
   }
 
   async function save() {
@@ -105,6 +133,75 @@ export default function SettingsForm({ org }: { org: Organization }) {
             className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none"
           />
         </Field>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Файли скриптів</label>
+          <p className="text-xs text-gray-400 mb-3">Завантажте .js або .css файли. Вони будуть підключені до сайту.</p>
+
+          {(settings.custom_script_files ?? []).length > 0 && (
+            <div className="space-y-2 mb-3">
+              {(settings.custom_script_files ?? []).map((file, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5">
+                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                    file.type === 'css' ? 'bg-purple-100 text-purple-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {file.type}
+                  </span>
+                  <span className="text-sm text-gray-700 truncate flex-1">{file.name}</span>
+                  <span className="text-xs text-gray-400">
+                    {file.position === 'head' ? '<head>' : '<body>'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeScriptFile(i)}
+                    className="text-gray-400 hover:text-red-500 transition text-sm"
+                    title="Видалити"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".js,.css"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) uploadScriptFile(file, 'head')
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+            >
+              {uploading ? 'Завантаження...' : '+ Додати файл в <head>'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const input = document.createElement('input')
+                input.type = 'file'
+                input.accept = '.js,.css'
+                input.onchange = () => {
+                  const file = input.files?.[0]
+                  if (file) uploadScriptFile(file, 'body')
+                }
+                input.click()
+              }}
+              disabled={uploading}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+            >
+              {uploading ? 'Завантаження...' : '+ Додати файл в <body>'}
+            </button>
+          </div>
+        </div>
       </Section>
 
       <div className="flex items-center gap-4 pt-2">

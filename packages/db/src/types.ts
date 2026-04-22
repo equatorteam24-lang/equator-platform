@@ -34,6 +34,14 @@ export interface OrganizationSettings {
   meta_pixel_id?: string           // Facebook/Meta Pixel ID
   custom_head_scripts?: string     // arbitrary <script> tags for <head>
   custom_body_scripts?: string     // arbitrary scripts before </body>
+  custom_script_files?: ScriptFile[] // uploaded .js/.css files
+}
+
+export interface ScriptFile {
+  url: string
+  name: string
+  type: 'js' | 'css'
+  position: 'head' | 'body'        // where to inject
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────────

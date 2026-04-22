@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TravelCrypto — Премиум путешествия с оплатой криптовалютой</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; color: #1a1a2e; background: #fff; width: 1440px; }
+
+    /* ===== NAVBAR ===== */
+    .navbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 80px; background: #fff; border-bottom: 1px solid #eee;
+    }
+    .navbar-logo {
+      font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700;
+      color: #0f0f2d; letter-spacing: -0.5px;
+    }
+    .navbar-logo span { color: #c9a84c; }
+    .navbar-links { display: flex; gap: 32px; }
+    .navbar-links a {
+      text-decoration: none; color: #444; font-size: 15px; font-weight: 500;
+    }
+    .navbar-cta {
+      background: #c9a84c; color: #fff; border: none; padding: 12px 28px;
+      border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      position: relative; padding: 120px 80px 100px; min-height: 680px;
+      background: linear-gradient(135deg, #0f0f2d 0%, #1a1a4e 50%, #0d0d28 100%);
+      overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: -200px; right: -100px;
+      width: 600px; height: 600px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.15) 0%, transparent 70%);
+    }
+    .hero::after {
+      content: ''; position: absolute; bottom: -150px; left: 200px;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    }
+    .hero-content { position: relative; z-index: 2; max-width: 700px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 40px; padding: 8px 20px; margin-bottom: 32px;
+      color: #c9a84c; font-size: 14px; font-weight: 500;
+    }
+    .hero-badge-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #c9a84c;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif; font-size: 64px; line-height: 1.1;
+      color: #fff; margin-bottom: 24px; font-weight: 700;
+    }
+    .hero h1 em {
+      font-style: normal; color: #c9a84c;
+    }
+    .hero p {
+      font-size: 18px; line-height: 1.7; color: rgba(255,255,255,0.7);
+      margin-bottom: 40px; max-width: 540px;
+    }
+    .hero-buttons { display: flex; gap: 16px; }
+    .btn-primary {
+      background: #c9a84c; color: #fff; border: none; padding: 16px 36px;
+      border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.3);
+      padding: 16px 36px; border-radius: 10px; font-size: 16px; font-weight: 500; cursor: pointer;
+    }
+    .hero-stats {
+      display: flex; gap: 48px; margin-top: 64px;
+      padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .hero-stat-number {
+      font-family: 'Playfair Display', serif; font-size: 36px;
+      color: #c9a84c; font-weight: 700;
+    }
+    .hero-stat-label { font-size: 14px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+
+    .hero-image {
+      position: absolute; right: 80px; top: 50%; transform: translateY(-50%);
+      z-index: 2;
+    }
+    .hero-image-card {
+      width: 420px; height: 500px; border-radius: 24px;
+      background: linear-gradient(180deg, rgba(201,168,76,0.2) 0%, rgba(15,15,45,0.8) 100%);
+      border: 1px solid rgba(201,168,76,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 80px; color: rgba(201,168,76,0.4);
+      position: relative; overflow: hidden;
+    }
+    .hero-image-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"><text x="200" y="250" text-anchor="middle" font-size="120" fill="rgba(201,168,76,0.15)">✈</text></svg>') center/contain no-repeat;
+    }
+    .hero-float-card {
+      position: absolute; bottom: 30px; left: -60px;
+      background: rgba(255,255,255,0.1); backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+      padding: 20px 24px; min-width: 220px;
+    }
+    .hero-float-card-row { display: flex; align-items: center; gap: 12px; }
+    .hero-float-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(201,168,76,0.2); display: flex; align-items: center;
+      justify-content: center; font-size: 18px;
+    }
+    .hero-float-text { color: #fff; font-size: 13px; }
+    .hero-float-text strong { display: block; font-size: 15px; }
+
+    /* ===== ADVANTAGES ===== */
+    .advantages {
+      padding: 100px 80px; background: #fafafa;
+    }
+    .section-label {
+      font-size: 13px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 2px; color: #c9a84c; margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif; font-size: 44px;
+      font-weight: 700; color: #0f0f2d; margin-bottom: 16px; line-height: 1.2;
+    }
+    .section-subtitle {
+      font-size: 17px; color: #666; max-width: 560px; line-height: 1.6;
+      margin-bottom: 60px;
+    }
+    .advantages-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px;
+    }
+    .advantage-card {
+      background: #fff; border-radius: 16px; padding: 32px 24px;
+      border: 1px solid #eee; transition: all 0.3s;
+    }
+    .advantage-icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: linear-gradient(135deg, #c9a84c 0%, #dfc070 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-bottom: 20px; color: #fff;
+    }
+    .advantage-card h3 {
+      font-size: 17px; font-weight: 600; margin-bottom: 10px; color: #0f0f2d;
+    }
+    .advantage-card p {
+      font-size: 14px; color: #777; line-height: 1.6;
+    }
+
+    /* ===== SERVICES ===== */
+    .services { padding: 100px 80px; }
+    .service-block {
+      display: flex; gap: 60px; align-items: center;
+      margin-bottom: 80px; padding-bottom: 80px;
+      border-bottom: 1px solid #eee;
+    }
+    .service-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .service-block.reverse { flex-direction: row-reverse; }
+    .service-image {
+      flex: 0 0 520px; height: 380px; border-radius: 20px;
+      background: linear-gradient(135deg, #f0ebe3 0%, #e8e0d0 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 64px; position: relative; overflow: hidden;
+    }
+    .service-image-label {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(0,0,0,0.6); color: #fff; padding: 8px 16px;
+      border-radius: 8px; font-size: 12px; font-weight: 500;
+    }
+    .service-content { flex: 1; }
+    .service-tag {
+      display: inline-block; background: rgba(201,168,76,0.1);
+      color: #c9a84c; font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      padding: 6px 14px; border-radius: 6px; margin-bottom: 16px;
+    }
+    .service-content h2 {
+      font-family: 'Playfair Display', serif; font-size: 36px;
+      font-weight: 700; color: #0f0f2d; margin-bottom: 16px;
+    }
+    .service-content p {
+      font-size: 16px; color: #666; line-height: 1.7; margin-bottom: 24px;
+    }
+    .service-features {
+      list-style: none; margin-bottom: 32px;
+    }
+    .service-features li {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 0; font-size: 15px; color: #444;
+    }
+    .service-features li::before {
+      content: '✓'; display: flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 6px;
+      background: rgba(201,168,76,0.1); color: #c9a84c;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .btn-service {
+      background: #0f0f2d; color: #fff; border: none; padding: 14px 32px;
+      border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+
+    /* ===== CRYPTO ===== */
+    .crypto {
+      padding: 100px 80px;
+      background: linear-gradient(135deg, #0f0f2d 0%, #1a1a4e 100%);
+    }
+    .crypto .section-label { color: #c9a84c; }
+    .crypto .section-title { color: #fff; }
+    .crypto .section-subtitle { color: rgba(255,255,255,0.6); }
+    .crypto-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+      align-items: center;
+    }
+    .crypto-coins {
+      display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 40px;
+    }
+    .crypto-coin {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 12px 20px;
+    }
+    .crypto-coin-icon {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 12px;
+    }
+    .coin-btc { background: #f7931a; color: #fff; }
+    .coin-eth { background: #627eea; color: #fff; }
+    .coin-usdt { background: #26a17b; color: #fff; }
+    .coin-usdc { background: #2775ca; color: #fff; }
+    .coin-sol { background: linear-gradient(135deg, #9945ff, #14f195); color: #fff; }
+    .coin-bnb { background: #f3ba2f; color: #fff; }
+    .crypto-coin-name { color: #fff; font-size: 14px; font-weight: 500; }
+    .crypto-coin-ticker { color: rgba(255,255,255,0.4); font-size: 12px; }
+
+    .crypto-steps { display: flex; flex-direction: column; gap: 24px; }
+    .crypto-step {
+      display: flex; gap: 20px; align-items: flex-start;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 24px;
+    }
+    .crypto-step-num {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #c9a84c, #dfc070);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .crypto-step h4 { color: #fff; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .crypto-step p { color: rgba(255,255,255,0.5); font-size: 14px; line-height: 1.5; }
+
+    /* ===== FORM ===== */
+    .form-section {
+      padding: 100px 80px; background: #fafafa;
+    }
+    .form-wrapper {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 80px;
+      align-items: start;
+    }
+    .form-info h2 {
+      font-family: 'Playfair Display', serif; font-size: 40px;
+      color: #0f0f2d; margin-bottom: 16px; font-weight: 700;
+    }
+    .form-info p {
+      font-size: 16px; color: #666; line-height: 1.7; margin-bottom: 32px;
+    }
+    .form-benefits { list-style: none; }
+    .form-benefits li {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 0; font-size: 15px; color: #444;
+    }
+    .form-benefits li .icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(201,168,76,0.1); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .form-card {
+      background: #fff; border-radius: 20px; padding: 40px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      border: 1px solid #eee;
+    }
+    .form-card h3 {
+      font-size: 22px; font-weight: 700; color: #0f0f2d; margin-bottom: 28px;
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block; font-size: 14px; font-weight: 500;
+      color: #444; margin-bottom: 8px;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 14px 16px; border: 1px solid #ddd;
+      border-radius: 10px; font-size: 15px; font-family: 'Inter', sans-serif;
+      background: #fafafa; outline: none;
+    }
+    .form-group textarea { min-height: 100px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .btn-submit {
+      width: 100%; background: #c9a84c; color: #fff; border: none;
+      padding: 16px; border-radius: 10px; font-size: 16px;
+      font-weight: 600; cursor: pointer; margin-top: 8px;
+    }
+
+    /* ===== REVIEWS ===== */
+    .reviews { padding: 100px 80px; }
+    .reviews-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+      margin-top: 60px;
+    }
+    .review-card {
+      background: #fff; border-radius: 16px; padding: 32px;
+      border: 1px solid #eee;
+    }
+    .review-stars { color: #c9a84c; font-size: 16px; margin-bottom: 16px; letter-spacing: 2px; }
+    .review-text {
+      font-size: 15px; color: #555; line-height: 1.7; margin-bottom: 20px;
+      font-style: italic;
+    }
+    .review-author { display: flex; align-items: center; gap: 12px; }
+    .review-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #c9a84c, #dfc070);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 16px;
+    }
+    .review-name { font-size: 15px; font-weight: 600; color: #0f0f2d; }
+    .review-role { font-size: 13px; color: #999; }
+
+    /* ===== CASES ===== */
+    .cases { padding: 100px 80px; background: #fafafa; }
+    .cases-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+      margin-top: 60px;
+    }
+    .case-card {
+      border-radius: 20px; overflow: hidden; background: #fff;
+      border: 1px solid #eee;
+    }
+    .case-image {
+      height: 220px;
+      background: linear-gradient(135deg, #e8e0d0, #f0ebe3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 48px; position: relative;
+    }
+    .case-badge {
+      position: absolute; top: 16px; left: 16px;
+      background: #c9a84c; color: #fff; padding: 6px 14px;
+      border-radius: 6px; font-size: 12px; font-weight: 600;
+    }
+    .case-content { padding: 24px; }
+    .case-content h3 { font-size: 18px; font-weight: 600; color: #0f0f2d; margin-bottom: 8px; }
+    .case-content p { font-size: 14px; color: #777; line-height: 1.6; }
+    .case-meta {
+      display: flex; gap: 16px; margin-top: 16px; padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    .case-meta span { font-size: 13px; color: #999; }
+
+    /* ===== CONTACTS ===== */
+    .contacts {
+      padding: 100px 80px;
+      background: linear-gradient(135deg, #0f0f2d 0%, #1a1a4e 100%);
+    }
+    .contacts-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+      margin-top: 60px;
+    }
+    .contact-channels { display: flex; flex-direction: column; gap: 20px; }
+    .contact-card {
+      display: flex; align-items: center; gap: 20px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 24px;
+    }
+    .contact-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .contact-icon.phone { background: rgba(76,175,80,0.2); }
+    .contact-icon.whatsapp { background: rgba(37,211,102,0.2); }
+    .contact-icon.telegram { background: rgba(0,136,204,0.2); }
+    .contact-icon.email { background: rgba(201,168,76,0.2); }
+    .contact-card h4 { color: #fff; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .contact-card p { color: rgba(255,255,255,0.5); font-size: 14px; }
+
+    .contact-form-card {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; padding: 36px;
+    }
+    .contact-form-card h3 { color: #fff; font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+    .contact-form-card .form-group label { color: rgba(255,255,255,0.7); }
+    .contact-form-card input, .contact-form-card textarea {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      color: #fff; width: 100%; padding: 14px 16px; border-radius: 10px;
+      font-size: 15px; font-family: 'Inter', sans-serif;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      padding: 60px 80px 40px; background: #0a0a1e;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .footer-logo {
+      font-family: 'Playfair Display', serif; font-size: 24px;
+      font-weight: 700; color: #fff;
+    }
+    .footer-logo span { color: #c9a84c; }
+    .footer-desc { color: rgba(255,255,255,0.4); font-size: 14px; margin-top: 8px; max-width: 300px; line-height: 1.5; }
+    .footer-links h4 { color: #fff; font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+    .footer-links a {
+      display: block; color: rgba(255,255,255,0.4); font-size: 14px;
+      text-decoration: none; margin-bottom: 10px;
+    }
+    .footer-bottom {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 24px; color: rgba(255,255,255,0.3); font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-logo">Travel<span>Crypto</span></div>
+    <div class="navbar-links">
+      <a href="#">Главная</a>
+      <a href="#">Услуги</a>
+      <a href="#">Крипто-оплата</a>
+      <a href="#">Кейсы</a>
+      <a href="#">Контакты</a>
+    </div>
+    <button class="navbar-cta">Оставить запрос</button>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <div class="hero-badge-dot"></div>
+        Оплата криптовалютой доступна
+      </div>
+      <h1>Путешествуйте<br>с <em>комфортом</em></h1>
+      <p>Премиальные авиабилеты, отели, VIP-сервисы и частные джеты. Оплачивайте криптовалютой — быстро, безопасно, конфиденциально.</p>
+      <div class="hero-buttons">
+        <button class="btn-primary">Оставить запрос</button>
+        <button class="btn-outline">Наши услуги</button>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-number">2,500+</div>
+          <div class="hero-stat-label">Довольных клиентов</div>
+        </div>
+        <div>
+          <div class="hero-stat-number">150+</div>
+          <div class="hero-stat-label">Направлений</div>
+        </div>
+        <div>
+          <div class="hero-stat-number">24/7</div>
+          <div class="hero-stat-label">Поддержка</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-image">
+      <div class="hero-image-card">
+        <div class="hero-float-card">
+          <div class="hero-float-card-row">
+            <div class="hero-float-icon">₿</div>
+            <div class="hero-float-text">
+              <strong>Крипто-оплата</strong>
+              BTC, ETH, USDT и др.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADVANTAGES -->
+  <section class="advantages">
+    <div class="section-label">Преимущества</div>
+    <div class="section-title">Почему выбирают нас</div>
+    <div class="section-subtitle">Мы объединяем премиальный сервис, выгодные цены и современные способы оплаты для вашего комфорта.</div>
+    <div class="advantages-grid">
+      <div class="advantage-card">
+        <div class="advantage-icon">✈</div>
+        <h3>Авиабилеты</h3>
+        <p>Выгодные тарифы на все направления. Бизнес- и первый класс по лучшим ценам.</p>
+      </div>
+      <div class="advantage-card">
+        <div class="advantage-icon">🏨</div>
+        <h3>Отели</h3>
+        <p>Цены ниже или на уровне Booking. Эксклюзивные условия размещения.</p>
+      </div>
+      <div class="advantage-card">
+        <div class="advantage-icon">⭐</div>
+        <h3>VIP-сервис</h3>
+        <p>Fast Track, VIP-залы, meet & greet в аэропортах мира.</p>
+      </div>
+      <div class="advantage-card">
+        <div class="advantage-icon">🚗</div>
+        <h3>Трансферы</h3>
+        <p>Комфортные трансферы любого класса в 500+ городах мира.</p>
+      </div>
+      <div class="advantage-card">
+        <div class="advantage-icon">🛩</div>
+        <h3>Частные джеты</h3>
+        <p>Аренда частных самолётов для деловых и личных перелётов.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="services">
+    <div class="section-label">Услуги</div>
+    <div class="section-title">Полный спектр travel-услуг</div>
+    <div class="section-subtitle">Каждая услуга — это индивидуальный подход. Оставьте запрос, и мы подберём лучшее предложение.</div>
+
+    <div class="service-block">
+      <div class="service-image">
+        ✈️
+        <div class="service-image-label">Авиабилеты по всему миру</div>
+      </div>
+      <div class="service-content">
+        <div class="service-tag">Авиабилеты</div>
+        <h2>Выгодные авиабилеты</h2>
+        <p>Мы работаем напрямую с авиакомпаниями и находим лучшие тарифы. Эконом, бизнес, первый класс — любое направление.</p>
+        <ul class="service-features">
+          <li>Прямые контракты с авиакомпаниями</li>
+          <li>Бизнес- и первый класс со скидкой до 40%</li>
+          <li>Групповые тарифы и корпоративные программы</li>
+          <li>Поддержка 24/7 при изменениях рейса</li>
+        </ul>
+        <button class="btn-service">Оставить запрос →</button>
+      </div>
+    </div>
+
+    <div class="service-block reverse">
+      <div class="service-image">
+        🏨
+        <div class="service-image-label">Отели премиум-класса</div>
+      </div>
+      <div class="service-content">
+        <div class="service-tag">Отели</div>
+        <h2>Отели дешевле Booking</h2>
+        <p>Эксклюзивные тарифы на размещение в лучших отелях мира. Мы гарантируем цены на уровне или ниже публичных агрегаторов.</p>
+        <ul class="service-features">
+          <li>Более 1 000 000 отелей по всему миру</li>
+          <li>Цены ниже или на уровне Booking</li>
+          <li>Бесплатная отмена в большинстве случаев</li>
+          <li>Персональный менеджер по подбору</li>
+        </ul>
+        <button class="btn-service">Оставить запрос →</button>
+      </div>
+    </div>
+
+    <div class="service-block">
+      <div class="service-image">
+        ⭐
+        <div class="service-image-label">VIP-сервис в аэропортах</div>
+      </div>
+      <div class="service-content">
+        <div class="service-tag">VIP-услуги</div>
+        <h2>VIP в аэропортах мира</h2>
+        <p>Fast Track, приватные залы ожидания, встреча у трапа и сопровождение. Путешествуйте без очередей и стресса.</p>
+        <ul class="service-features">
+          <li>Fast Track — проход без очереди</li>
+          <li>VIP-залы в 600+ аэропортах</li>
+          <li>Meet & Greet — встреча и сопровождение</li>
+          <li>Помощь с багажом и документами</li>
+        </ul>
+        <button class="btn-service">Оставить запрос →</button>
+      </div>
+    </div>
+
+    <div class="service-block reverse">
+      <div class="service-image">
+        🚗
+        <div class="service-image-label">Трансферы по всему миру</div>
+      </div>
+      <div class="service-content">
+        <div class="service-tag">Трансферы</div>
+        <h2>Комфортные трансферы</h2>
+        <p>Индивидуальные трансферы от стандарта до премиум-класса. Встреча с табличкой, детские кресла, Wi-Fi в автомобиле.</p>
+        <ul class="service-features">
+          <li>500+ городов по всему миру</li>
+          <li>От седана до лимузина и минивэна</li>
+          <li>Фиксированная цена, без сюрпризов</li>
+          <li>Отслеживание рейса водителем</li>
+        </ul>
+        <button class="btn-service">Оставить запрос →</button>
+      </div>
+    </div>
+
+    <div class="service-block">
+      <div class="service-image" style="background: linear-gradient(135deg, #1a1a4e, #0f0f2d);">
+        🛩️
+        <div class="service-image-label">Частная авиация</div>
+      </div>
+      <div class="service-content">
+        <div class="service-tag">Премиум</div>
+        <h2>Частные джеты</h2>
+        <p>Аренда частных самолётов для деловых и личных перелётов. Максимальная конфиденциальность и гибкость расписания.</p>
+        <ul class="service-features">
+          <li>Light Jets, Midsize, Heavy — любой класс</li>
+          <li>Вылет из частных терминалов</li>
+          <li>Кейтеринг и особые пожелания на борту</li>
+          <li>Оплата криптовалютой без ограничений</li>
+        </ul>
+        <button class="btn-service">Оставить запрос →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CRYPTO PAYMENT -->
+  <section class="crypto">
+    <div class="section-label">Криптовалюта</div>
+    <div class="section-title" style="color:#fff;">Оплата криптовалютой</div>
+    <div class="section-subtitle" style="color:rgba(255,255,255,0.6);">Быстро, безопасно, конфиденциально. Мы принимаем популярные криптовалюты для оплаты любых услуг.</div>
+    <div class="crypto-grid">
+      <div>
+        <div class="crypto-coins">
+          <div class="crypto-coin">
+            <div class="crypto-coin-icon coin-btc">₿</div>
+            <div>
+              <div class="crypto-coin-name">Bitcoin</div>
+              <div class="crypto-coin-ticker">BTC</div>
+            </div>
+          </div>
+          <div class="crypto-coin">
+            <div class="crypto-coin-icon coin-eth">Ξ</div>
+            <div>
+              <div class="crypto-coin-name">Ethereum</div>
+              <div class="crypto-coin-ticker">ETH</div>
+            </div>
+          </div>
+          <div class="crypto-coin">
+            <div class="crypto-coin-icon coin-usdt">₮</div>
+            <div>
+              <div class="crypto-coin-name">Tether</div>
+              <div class="crypto-coin-ticker">USDT</div>
+            </div>
+          </div>
+          <div class="crypto-coin">
+            <div class="crypto-coin-icon coin-usdc">$</div>
+            <div>
+              <div class="crypto-coin-name">USD Coin</div>
+              <div class="crypto-coin-ticker">USDC</div>
+            </div>
+          </div>
+          <div class="crypto-coin">
+            <div class="crypto-coin-icon coin-sol">◎</div>
+            <div>
+              <div class="crypto-coin-name">Solana</div>
+              <div class="crypto-coin-ticker">SOL</div>
+            </div>
+          </div>
+          <div class="crypto-coin">
+            <div class="crypto-coin-icon coin-bnb">B</div>
+            <div>
+              <div class="crypto-coin-name">BNB</div>
+              <div class="crypto-coin-ticker">BNB</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary">Оставить запрос</button>
+      </div>
+      <div class="crypto-steps">
+        <div class="crypto-step">
+          <div class="crypto-step-num">1</div>
+          <div>
+            <h4>Оставьте заявку</h4>
+            <p>Опишите желаемую услугу и укажите, что хотите оплатить криптовалютой.</p>
+          </div>
+        </div>
+        <div class="crypto-step">
+          <div class="crypto-step-num">2</div>
+          <div>
+            <h4>Получите предложение</h4>
+            <p>Мы подберём лучший вариант и рассчитаем стоимость в выбранной криптовалюте.</p>
+          </div>
+        </div>
+        <div class="crypto-step">
+          <div class="crypto-step-num">3</div>
+          <div>
+            <h4>Оплатите и подтвердите</h4>
+            <p>Переведите криптовалюту на указанный кошелёк. Подтверждение — в течение минут.</p>
+          </div>
+        </div>
+        <div class="crypto-step">
+          <div class="crypto-step-num">4</div>
+          <div>
+            <h4>Получите ваучеры</h4>
+            <p>После подтверждения оплаты вы получите все документы на email или в мессенджер.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORM -->
+  <section class="form-section">
+    <div class="form-wrapper">
+      <div class="form-info">
+        <div class="section-label">Заявка</div>
+        <h2>Оставьте запрос — мы всё организуем</h2>
+        <p>Заполните простую форму, и наш менеджер свяжется с вами в течение 30 минут с лучшим предложением.</p>
+        <ul class="form-benefits">
+          <li>
+            <div class="icon">⚡</div>
+            <span>Ответ в течение 30 минут</span>
+          </li>
+          <li>
+            <div class="icon">💰</div>
+            <span>Лучшая цена гарантирована</span>
+          </li>
+          <li>
+            <div class="icon">🔒</div>
+            <span>Конфиденциальность данных</span>
+          </li>
+          <li>
+            <div class="icon">₿</div>
+            <span>Оплата криптовалютой доступна</span>
+          </li>
+        </ul>
+      </div>
+      <div class="form-card">
+        <h3>Форма заявки</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ваше имя</label>
+            <input type="text" placeholder="Иван Петров">
+          </div>
+          <div class="form-group">
+            <label>Телефон или email</label>
+            <input type="text" placeholder="+7 (999) 123-45-67">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Услуга</label>
+          <select>
+            <option>Авиабилеты</option>
+            <option>Отели</option>
+            <option>VIP-сервис в аэропорту</option>
+            <option>Трансфер</option>
+            <option>Частный джет</option>
+            <option>Комплексный тур</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Направление / Детали</label>
+          <input type="text" placeholder="Москва → Дубай, 2 человека, бизнес-класс">
+        </div>
+        <div class="form-group">
+          <label>Способ оплаты</label>
+          <select>
+            <option>Криптовалюта (USDT, BTC, ETH...)</option>
+            <option>Банковский перевод</option>
+            <option>Карта</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Комментарий</label>
+          <textarea placeholder="Дополнительные пожелания..."></textarea>
+        </div>
+        <button class="btn-submit">Отправить запрос</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="reviews">
+    <div class="section-label">Отзывы</div>
+    <div class="section-title">Что говорят наши клиенты</div>
+    <div class="section-subtitle">Более 2,500 довольных клиентов по всему миру доверяют нам свои путешествия.</div>
+    <div class="reviews-grid">
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">«Оплатил перелёт бизнес-классом в Дубай через USDT. Всё прошло гладко, билеты получил за 15 минут. Сервис на высшем уровне!»</div>
+        <div class="review-author">
+          <div class="review-avatar">А</div>
+          <div>
+            <div class="review-name">Алексей М.</div>
+            <div class="review-role">Предприниматель, Москва</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">«VIP-сервис в аэропорту Стамбула — отдельное удовольствие. Встретили, провели без очереди, помогли с багажом. Рекомендую!»</div>
+        <div class="review-author">
+          <div class="review-avatar">М</div>
+          <div>
+            <div class="review-name">Марина К.</div>
+            <div class="review-role">Топ-менеджер, Киев</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">«Арендовал частный джет для деловой поездки. Оплатил Bitcoin — никаких вопросов, всё конфиденциально и быстро.»</div>
+        <div class="review-author">
+          <div class="review-avatar">Д</div>
+          <div>
+            <div class="review-name">Дмитрий В.</div>
+            <div class="review-role">Инвестор, Дубай</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CASES -->
+  <section class="cases">
+    <div class="section-label">Кейсы</div>
+    <div class="section-title">Примеры наших услуг</div>
+    <div class="section-subtitle">Реальные примеры организации VIP-путешествий для наших клиентов.</div>
+    <div class="cases-grid">
+      <div class="case-card">
+        <div class="case-image">
+          🏝️
+          <div class="case-badge">VIP-тур</div>
+        </div>
+        <div class="case-content">
+          <h3>Мальдивы — 10 дней</h3>
+          <p>Полный пакет: перелёт бизнес-классом, 5-звёздочный отель, трансферы на гидроплане. Оплата USDT.</p>
+          <div class="case-meta">
+            <span>2 человека</span>
+            <span>Бизнес-класс</span>
+            <span>Крипто</span>
+          </div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-image" style="background: linear-gradient(135deg, #d0e0f0, #e0e8f0);">
+          🏔️
+          <div class="case-badge">Частный джет</div>
+        </div>
+        <div class="case-content">
+          <h3>Цюрих → Куршевель</h3>
+          <p>Частный перелёт на 6 персон, трансфер до шале, VIP-встреча в аэропорту Цюриха.</p>
+          <div class="case-meta">
+            <span>6 человек</span>
+            <span>Private Jet</span>
+            <span>Bitcoin</span>
+          </div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-image" style="background: linear-gradient(135deg, #f0e0d0, #e8d8c8);">
+          🌆
+          <div class="case-badge">Корпоратив</div>
+        </div>
+        <div class="case-content">
+          <h3>Конференция в Дубае</h3>
+          <p>Организация поездки для команды из 15 человек: перелёты, отель, трансферы, VIP-зал.</p>
+          <div class="case-meta">
+            <span>15 человек</span>
+            <span>Групповой тариф</span>
+            <span>USDC</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACTS -->
+  <section class="contacts">
+    <div class="section-label">Контакты</div>
+    <div class="section-title" style="color:#fff;">Свяжитесь с нами</div>
+    <div class="section-subtitle" style="color:rgba(255,255,255,0.6);">Мы на связи 24/7. Выберите удобный способ связи или заполните форму.</div>
+    <div class="contacts-grid">
+      <div class="contact-channels">
+        <div class="contact-card">
+          <div class="contact-icon phone">📞</div>
+          <div>
+            <h4>Телефон</h4>
+            <p>+7 (800) 123-45-67</p>
+          </div>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon whatsapp">💬</div>
+          <div>
+            <h4>WhatsApp</h4>
+            <p>Быстрый ответ в чате</p>
+          </div>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon telegram">✈</div>
+          <div>
+            <h4>Telegram</h4>
+            <p>@TravelCrypto_support</p>
+          </div>
+        </div>
+        <div class="contact-card">
+          <div class="contact-icon email">✉</div>
+          <div>
+            <h4>Email</h4>
+            <p>hello@travelcrypto.com</p>
+          </div>
+        </div>
+      </div>
+      <div class="contact-form-card">
+        <h3>Обратная связь</h3>
+        <div class="form-group">
+          <label>Имя</label>
+          <input type="text" placeholder="Ваше имя">
+        </div>
+        <div class="form-group">
+          <label>Email или телефон</label>
+          <input type="text" placeholder="Контакт для связи">
+        </div>
+        <div class="form-group">
+          <label>Сообщение</label>
+          <textarea placeholder="Ваш вопрос или пожелание..." style="min-height:100px;resize:vertical;"></textarea>
+        </div>
+        <button class="btn-submit">Отправить</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-top">
+      <div>
+        <div class="footer-logo">Travel<span>Crypto</span></div>
+        <div class="footer-desc">Премиальные travel-услуги с возможностью оплаты криптовалютой. Путешествуйте комфортно.</div>
+      </div>
+      <div class="footer-links">
+        <h4>Услуги</h4>
+        <a href="#">Авиабилеты</a>
+        <a href="#">Отели</a>
+        <a href="#">VIP-сервис</a>
+        <a href="#">Трансферы</a>
+        <a href="#">Частные джеты</a>
+      </div>
+      <div class="footer-links">
+        <h4>Компания</h4>
+        <a href="#">О нас</a>
+        <a href="#">Кейсы</a>
+        <a href="#">Отзывы</a>
+        <a href="#">Блог</a>
+        <a href="#">Контакты</a>
+      </div>
+      <div class="footer-links">
+        <h4>Оплата</h4>
+        <a href="#">Bitcoin</a>
+        <a href="#">Ethereum</a>
+        <a href="#">USDT / USDC</a>
+        <a href="#">Банковский перевод</a>
+        <a href="#">Карта</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2025 TravelCrypto. Все права защищены.</span>
+      <span>Политика конфиденциальности | Условия использования</span>
+    </div>
+  </footer>
+
+</body>
+</html>

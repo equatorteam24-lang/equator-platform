@@ -1,0 +1,7 @@
+{
+  "status": "error",
+  "projectId": "a05a85ca-fbb5-4684-81f6-832deac1c4b8",
+  "startedAt": 1776877529124,
+  "error": "claude exited 1: Error: Reached max turns (30)",
+  "finishedAt": 1776877728940
+}

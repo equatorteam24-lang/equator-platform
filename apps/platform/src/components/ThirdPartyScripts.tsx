@@ -6,7 +6,9 @@ interface Props {
 }
 
 export default function ThirdPartyScripts({ settings }: Props) {
-  const { google_analytics_id, meta_pixel_id, custom_head_scripts, custom_body_scripts } = settings
+  const { google_analytics_id, meta_pixel_id, custom_head_scripts, custom_body_scripts, custom_script_files } = settings
+  const headFiles = (custom_script_files ?? []).filter(f => f.position === 'head')
+  const bodyFiles = (custom_script_files ?? []).filter(f => f.position === 'body')
 
   return (
     <>
@@ -63,11 +65,25 @@ export default function ThirdPartyScripts({ settings }: Props) {
         </Script>
       )}
 
+      {/* ── Uploaded head files (.js / .css) ──────────────────────────────── */}
+      {headFiles.map((f, i) =>
+        f.type === 'css'
+          ? <link key={`head-css-${i}`} rel="stylesheet" href={f.url} />
+          : <Script key={`head-js-${i}`} src={f.url} strategy="afterInteractive" />
+      )}
+
       {/* ── Custom body scripts ───────────────────────────────────────────── */}
       {custom_body_scripts && (
         <Script id="custom-body" strategy="lazyOnload">
           {custom_body_scripts}
         </Script>
+      )}
+
+      {/* ── Uploaded body files (.js / .css) ──────────────────────────────── */}
+      {bodyFiles.map((f, i) =>
+        f.type === 'css'
+          ? <link key={`body-css-${i}`} rel="stylesheet" href={f.url} />
+          : <Script key={`body-js-${i}`} src={f.url} strategy="lazyOnload" />
       )}
     </>
   )

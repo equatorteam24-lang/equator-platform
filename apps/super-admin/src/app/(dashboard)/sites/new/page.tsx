@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const SITE_TYPES = [
   { value: 'one-page', label: 'Односторінковий' },
@@ -245,7 +246,8 @@ export default function NewSitePage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <h1 className="text-xl font-bold text-gray-900 mb-1">Новий сайт</h1>
+      <Link href="/sites" className="text-gray-400 hover:text-gray-600 text-sm">← Назад</Link>
+      <h1 className="text-xl font-bold text-gray-900 mb-1 mt-2">Новий сайт</h1>
       <p className="text-sm text-gray-500 mb-8">Опишіть проект — агент зверстає сайт автоматично</p>
 
       {error && (

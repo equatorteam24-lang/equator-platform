@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import UpdatePaymentForm from './UpdatePaymentForm'
 import ResetPasswordForm from './ResetPasswordForm'
 import UpdateDomainForm from './UpdateDomainForm'
@@ -25,6 +26,7 @@ export default async function OrganizationPage({ params }: { params: Promise<{ i
 
   return (
     <div className="p-8 max-w-5xl space-y-6">
+      <Link href="/organizations" className="text-gray-400 hover:text-gray-600 text-sm">← Назад</Link>
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{org.name}</h1>

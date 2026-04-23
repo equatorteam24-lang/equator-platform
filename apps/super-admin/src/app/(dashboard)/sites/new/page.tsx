@@ -38,7 +38,7 @@ export default function NewSitePage() {
   const [siteType, setSiteType] = useState('one-page')
   const [theme, setTheme] = useState('light')
   const [structure, setStructure] = useState('')
-  const [referenceUrls, setReferenceUrls] = useState('')
+  const [referenceUrls] = useState('')
   const [primaryColor, setPrimaryColor] = useState('#2563eb')
   const [secondaryColor, setSecondaryColor] = useState('#f97316')
   const [designStyle, setDesignStyle] = useState('premium')
@@ -51,10 +51,9 @@ export default function NewSitePage() {
   const [extraWishes, setExtraWishes] = useState('')
 
   // File uploads
-  const [referenceFiles, setReferenceFiles] = useState<UploadedFile[]>([])
+  const [referenceFiles] = useState<UploadedFile[]>([])
   const [materialFiles, setMaterialFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
-  const refInputRef = useRef<HTMLInputElement>(null)
   const matInputRef = useRef<HTMLInputElement>(null)
 
   // ── Voice recording (Web Speech API) ──
@@ -362,15 +361,6 @@ export default function NewSitePage() {
 
         {/* ─── 04. Дизайн ─── */}
         <Section title="Дизайн" num="04">
-          <Field label="Референс URL" hint="Посилання на сайти, які подобаються (кожен з нового рядка)">
-            <textarea
-              value={referenceUrls}
-              onChange={e => setReferenceUrls(e.target.value)}
-              rows={2}
-              placeholder="https://example.com"
-              className="input"
-            />
-          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Основний колір">
               <div className="flex items-center gap-3">
@@ -405,59 +395,10 @@ export default function NewSitePage() {
               </div>
             </Field>
           </div>
-
-          {/* Reference screenshots */}
-          <Field label="Скріншоти референсів" hint="Скріншоти сайтів-прикладів, макети з Figma, Dribbble, Behance тощо">
-            <input
-              ref={refInputRef}
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={e => handleFileUpload(e.target.files, 'references')}
-            />
-            <button
-              type="button"
-              onClick={() => refInputRef.current?.click()}
-              disabled={uploading === 'references'}
-              className="file-upload-btn"
-            >
-              {uploading === 'references' ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-                  Завантажую...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
-                  Додати скріншоти референсів
-                </span>
-              )}
-            </button>
-            {referenceFiles.length > 0 && (
-              <div className="mt-3 grid grid-cols-4 gap-3">
-                {referenceFiles.map((f, i) => (
-                  <div key={i} className="relative group">
-                    <img src={f.url} alt={f.name} className="w-full h-24 object-cover rounded-lg border border-gray-200" />
-                    <button
-                      type="button"
-                      onClick={() => removeFile('references', i)}
-                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    >
-                      &times;
-                    </button>
-                    <p className="text-[10px] text-gray-400 mt-1 truncate">{f.name}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Field>
         </Section>
 
-        {/* ─── 04.5 Матеріали клієнта ─── */}
-        <Section title="Матеріали клієнта" num="04.5">
+        {/* ─── 05. Матеріали клієнта ─── */}
+        <Section title="Матеріали клієнта" num="05">
           <p className="text-xs text-gray-400 -mt-2 mb-3">
             Логотип, фото команди, продукції, офісу — все що потрібно використати на сайті замість стокових фото.
           </p>
@@ -514,8 +455,8 @@ export default function NewSitePage() {
           )}
         </Section>
 
-        {/* ─── 05. Контент ─── */}
-        <Section title="Контент та контакти" num="05">
+        {/* ─── 06. Контент ─── */}
+        <Section title="Контент та контакти" num="06">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Назва компанії" required>
               <input

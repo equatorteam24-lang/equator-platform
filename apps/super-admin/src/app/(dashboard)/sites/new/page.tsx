@@ -38,7 +38,6 @@ export default function NewSitePage() {
   const [siteType, setSiteType] = useState('one-page')
   const [theme, setTheme] = useState('light')
   const [structure, setStructure] = useState('')
-  const [referenceUrls] = useState('')
   const [primaryColor, setPrimaryColor] = useState('#2563eb')
   const [secondaryColor, setSecondaryColor] = useState('#f97316')
   const [bgColor, setBgColor] = useState('#ffffff')
@@ -53,7 +52,6 @@ export default function NewSitePage() {
   const [extraWishes, setExtraWishes] = useState('')
 
   // File uploads
-  const [referenceFiles] = useState<UploadedFile[]>([])
   const [materialFiles, setMaterialFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
   const matInputRef = useRef<HTMLInputElement>(null)
@@ -107,16 +105,16 @@ export default function NewSitePage() {
   }
 
   // ── File upload ──
-  const handleFileUpload = async (files: FileList | null, folder: 'references' | 'materials') => {
+  const handleFileUpload = async (files: FileList | null) => {
     if (!files?.length) return
-    setUploading(folder)
+    setUploading('materials')
     setError('')
 
     const formData = new FormData()
     for (const file of Array.from(files)) {
       formData.append('files', file)
     }
-    formData.append('folder', folder)
+    formData.append('folder', 'materials')
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
@@ -127,23 +125,15 @@ export default function NewSitePage() {
         return
       }
       const data = await res.json()
-      if (folder === 'references') {
-        setReferenceFiles(prev => [...prev, ...data.files])
-      } else {
-        setMaterialFiles(prev => [...prev, ...data.files])
-      }
+      setMaterialFiles(prev => [...prev, ...data.files])
     } catch {
       setError('Помилка мережі при завантаженні')
     }
     setUploading(null)
   }
 
-  const removeFile = (folder: 'references' | 'materials', index: number) => {
-    if (folder === 'references') {
-      setReferenceFiles(prev => prev.filter((_, i) => i !== index))
-    } else {
-      setMaterialFiles(prev => prev.filter((_, i) => i !== index))
-    }
+  const removeFile = (index: number) => {
+    setMaterialFiles(prev => prev.filter((_, i) => i !== index))
   }
 
   // ── AI parse description into form fields ──
@@ -209,7 +199,6 @@ export default function NewSitePage() {
         siteType,
         theme,
         structure,
-        referenceUrls,
         primaryColor,
         secondaryColor,
         bgColor,
@@ -223,7 +212,6 @@ export default function NewSitePage() {
         socials,
         extraWishes,
         freeDescription,
-        referenceImages: referenceFiles.map(f => ({ name: f.name, url: f.url })),
         clientMaterials: materialFiles.map(f => ({ name: f.name, url: f.url, type: f.type })),
       }
 
@@ -449,7 +437,7 @@ export default function NewSitePage() {
             multiple
             accept="image/*,.pdf,.svg"
             className="hidden"
-            onChange={e => handleFileUpload(e.target.files, 'materials')}
+            onChange={e => handleFileUpload(e.target.files)}
           />
           <button
             type="button"
@@ -484,7 +472,7 @@ export default function NewSitePage() {
                   )}
                   <button
                     type="button"
-                    onClick={() => removeFile('materials', i)}
+                    onClick={() => removeFile(i)}
                     className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                   >
                     &times;

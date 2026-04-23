@@ -7,7 +7,6 @@ import Link from 'next/link'
 const SITE_TYPES = [
   { value: 'one-page', label: 'Односторінковий' },
   { value: 'multi-page', label: 'Багатосторінковий' },
-  { value: 'landing', label: 'Лендінг' },
 ]
 
 const THEMES = [

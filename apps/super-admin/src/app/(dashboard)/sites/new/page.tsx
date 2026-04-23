@@ -41,6 +41,8 @@ export default function NewSitePage() {
   const [referenceUrls] = useState('')
   const [primaryColor, setPrimaryColor] = useState('#2563eb')
   const [secondaryColor, setSecondaryColor] = useState('#f97316')
+  const [bgColor, setBgColor] = useState('#ffffff')
+  const [textColor, setTextColor] = useState('#1a1a1a')
   const [designStyle, setDesignStyle] = useState('premium')
   const [companyName, setCompanyName] = useState('')
   const [companyDescription, setCompanyDescription] = useState('')
@@ -180,6 +182,8 @@ export default function NewSitePage() {
       if (data.structure) setStructure(data.structure)
       if (data.primaryColor) setPrimaryColor(data.primaryColor)
       if (data.secondaryColor) setSecondaryColor(data.secondaryColor)
+      if (data.bgColor) setBgColor(data.bgColor)
+      if (data.textColor) setTextColor(data.textColor)
       if (data.phone) setPhone(data.phone)
       if (data.email) setEmail(data.email)
       if (data.address) setAddress(data.address)
@@ -208,6 +212,8 @@ export default function NewSitePage() {
         referenceUrls,
         primaryColor,
         secondaryColor,
+        bgColor,
+        textColor,
         designStyle,
         companyName,
         companyDescription,
@@ -361,8 +367,11 @@ export default function NewSitePage() {
 
         {/* ─── 04. Дизайн ─── */}
         <Section title="Дизайн" num="04">
+          <p className="text-xs text-gray-400 -mt-2 mb-3">
+            Базові кольори сайту. Агент автоматично підлаштує контрастність на різних секціях для читабельності.
+          </p>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Основний колір">
+            <Field label="Акцентний колір" hint="Кнопки, посилання, виділення">
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -378,7 +387,7 @@ export default function NewSitePage() {
                 />
               </div>
             </Field>
-            <Field label="Додатковий колір">
+            <Field label="Додатковий колір" hint="Мітки, іконки, другорядні елементи">
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -390,6 +399,38 @@ export default function NewSitePage() {
                   type="text"
                   value={secondaryColor}
                   onChange={e => setSecondaryColor(e.target.value)}
+                  className="input flex-1"
+                />
+              </div>
+            </Field>
+            <Field label="Колір фону" hint="Основний фон сайту">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={bgColor}
+                  onChange={e => setBgColor(e.target.value)}
+                  className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={bgColor}
+                  onChange={e => setBgColor(e.target.value)}
+                  className="input flex-1"
+                />
+              </div>
+            </Field>
+            <Field label="Колір тексту" hint="Основний колір тексту">
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={textColor}
+                  onChange={e => setTextColor(e.target.value)}
+                  className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={textColor}
+                  onChange={e => setTextColor(e.target.value)}
                   className="input flex-1"
                 />
               </div>

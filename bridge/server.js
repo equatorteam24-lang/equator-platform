@@ -33,6 +33,10 @@ loadEnvFile()
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
+// Load design defaults for agent prompts
+let DESIGN_DEFAULTS = ''
+try { DESIGN_DEFAULTS = fs.readFileSync(path.join(__dirname, 'design-defaults.md'), 'utf-8') } catch {}
+
 // Ensure dirs exist
 for (const dir of [PROJECTS_DIR, JOBS_DIR]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -116,8 +120,16 @@ async function buildAndDeploy(jobId, projectDir, generatedCode) {
       'npx --yes vercel deploy --prod --yes 2>&1',
       { cwd: projectDir, timeout: 120000, encoding: 'utf-8' }
     )
-    const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
-    if (urlMatch) vercelUrl = urlMatch[0]
+
+    // Use the stable "Aliased" URL (same every deploy), not the per-deployment URL
+    const aliasMatch = deployOutput.match(/Aliased:\s+(https:\/\/[^\s]+)/)
+    if (aliasMatch) {
+      vercelUrl = aliasMatch[1]
+    } else {
+      // Fallback: use the deployment-specific URL
+      const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/)
+      if (urlMatch) vercelUrl = urlMatch[0]
+    }
 
     // Disable Vercel SSO protection so site is publicly accessible + embeddable in iframe
     disableVercelProtection(projectDir)
@@ -325,12 +337,14 @@ ${description}
   "name": "Назва проекту",
   "companyName": "Назва компанії",
   "companyDescription": "Опис діяльності (2-3 речення)",
-  "siteType": "one-page | multi-page | landing",
+  "siteType": "one-page | multi-page",
   "theme": "light | dark | auto",
-  "designStyle": "minimalist | corporate | creative | premium",
+  "designStyle": "minimalist | premium",
   "structure": "1. Hero...\\n2. Про нас...\\n3. ...",
-  "primaryColor": "#hex",
-  "secondaryColor": "#hex",
+  "primaryColor": "#hex (акцентний колір — кнопки, посилання)",
+  "secondaryColor": "#hex (додатковий колір — мітки, іконки)",
+  "bgColor": "#hex (основний фон сайту, за замовчуванням #ffffff)",
+  "textColor": "#hex (основний колір тексту, за замовчуванням #1a1a1a)",
   "phone": "",
   "email": "",
   "address": "",
@@ -399,7 +413,7 @@ async function handleGenerateSite(req, res) {
   // Run in background
   ;(async () => {
     try {
-      const skillPrompt = `/premium-web-design\n\n${prompt}`
+      const skillPrompt = `/premium-web-design\n\n## ОБОВ'ЯЗКОВІ ДЕФОЛТНІ ПРАВИЛА ДИЗАЙНУ\nНаступні правила повинні бути дотримані в кожному сайті. Клієнт може змінити їх пізніше через правки, але початковий сайт ПОВИНЕН відповідати цим стандартам:\n\n${DESIGN_DEFAULTS}\n\n---\n\n## ЗАВДАННЯ\n${prompt}`
       const output = await runClaude(skillPrompt, {
         cwd: projectDir,
         maxTurns: 30,
@@ -523,6 +537,8 @@ async function handleChat(req, res, projectId) {
 3. Використовуй інструмент Edit для точкових змін. НЕ перезаписуй весь файл через Write.
 4. Якщо потрібно змінити багато місць — роби кілька Edit викликів, але кожен — точковий.
 5. ЗАБОРОНЕНО генерувати файл з пам'яті. Працюй ТІЛЬКИ з кодом, наведеним нижче.
+6. НЕ РЕВЕРТУЙ попередні зміни! Якщо бачиш значення, які відрізняються від "стандартних" — це навмисні попередні правки. Змінюй ТІЛЬКИ те, що просить дизайнер.
+7. Роби РЕАЛЬНІ, ПОМІТНІ зміни. Якщо дизайнер каже "виправити" — переконайся що зміна достатня для візуального ефекту. Зміна padding на 2-4px не вирішує проблему. Перевіряй логіку: якщо хедер має висоту 80px, то padding-top контенту повинен бути >= 80px.
 
 ## ПОТОЧНИЙ КОД src/App.jsx
 \`\`\`jsx
@@ -531,6 +547,11 @@ ${currentCode}
 
 ## ЗАПИТ ВІД ДИЗАЙНЕРА
 ${message}
+
+## ДЕФОЛТНІ ПРАВИЛА ДИЗАЙНУ
+Наступні правила — це базові стандарти. Якщо поточний код вже відрізняється від них — це навмисні правки клієнта, НЕ змінюй їх назад. Використовуй ці правила як орієнтир тільки коли дизайнер просить щось "виправити" або "привести до стандарту":
+
+${DESIGN_DEFAULTS}
 
 ## ЩО РОБИТИ
 - Дизайн → редагуй src/App.jsx (використовуй Edit, не Write)

@@ -17,8 +17,6 @@ const THEMES = [
 
 const STYLES = [
   { value: 'minimalist', label: 'Мінімалістичний' },
-  { value: 'corporate', label: 'Корпоративний' },
-  { value: 'creative', label: 'Креативний' },
   { value: 'premium', label: 'Преміум (Awwwards-рівень)' },
 ]
 

@@ -68,9 +68,11 @@
   **ПРАВИЛЬНИЙ ПАТТЕРН (використовуй саме це):**
   ```css
   .hero { position: relative; min-height: 100vh; display: flex; align-items: center; /* або flex-end */ }
-  .hero .container { /* стандартний container, max-width 1280px, margin: 0 auto, padding */ }
+  .hero .container { width: 100%; /* ОБОВ'ЯЗКОВО width:100% бо .container має margin:0 auto яке у flex поглинає простір і центрує блок */ }
   .hero-text { max-width: 70%; /* БЕЗ margin: 0 auto, текст автоматично зліва */ }
   ```
+  ⚠️ ПАСТКА: Коли `.hero` має `display: flex`, а `.container` всередині має `margin: 0 auto` — flex трактує `margin: auto` як "поглинути вільний простір", і контейнер ЦЕНТРУЄТЬСЯ замість розтягування на всю ширину. Тому ОБОВ'ЯЗКОВО додавай `width: 100%` на контейнер всередині flex hero.
+  
   Якщо потрібен scroll-indicator або інший елемент справа — використовуй `position: absolute; right: 40px; bottom: 40px;` для нього, а НЕ flex space-between на контейнері. Контейнер має бути простим block або flex-column, НЕ flex-row з justify-content.
 
 ## Загальне правило вирівнювання контенту

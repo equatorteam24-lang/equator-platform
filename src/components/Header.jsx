@@ -21,9 +21,9 @@ export default function Header({ content = {} }) {
       <header style={S.header}>
         <div style={S.inner}>
           {/* Logo */}
-          <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <a href="/" style={{ flexShrink: 0 }}>
             <img src={LOGO_URL} alt="Дочки та Синочки" style={{ height: 70, objectFit: 'contain', display: 'block' }} />
-          </div>
+          </a>
 
           {/* Nav desktop */}
           <nav className="header-nav" style={S.nav}>

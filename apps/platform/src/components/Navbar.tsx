@@ -43,7 +43,7 @@ export default function Navbar() {
       >
         <div className="max-w-[1160px] mx-auto px-5 lg:px-0 flex items-center justify-between h-[72px] border-b border-white/15">
           {/* Logo */}
-          <a href="#" className="relative flex-shrink-0 w-[100px] h-[37px]">
+          <a href="/" className="relative flex-shrink-0 w-[100px] h-[37px]">
             <img src={LOGO_TOP} alt="Roofing" className="absolute top-0 left-0 h-[23px] w-auto" />
             <img src={LOGO_WORK} alt="Work" className="absolute bottom-0 left-[31px] h-[15px] w-auto" />
           </a>

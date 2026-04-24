@@ -387,7 +387,7 @@ function ContactSection({ id }) {
 
           {/* Form card */}
           <div style={{ background: 'white', borderRadius: 24, padding: 32, boxShadow: '0 1px 20px rgba(94,97,107,0.1)' }}>
-            <img src={LOGO_URL} alt="Дочки та Синочки" style={{ height: 60, marginBottom: 24 }} />
+            <a href="/"><img src={LOGO_URL} alt="Дочки та Синочки" style={{ height: 60, marginBottom: 24 }} /></a>
             <div style={{ marginBottom: 16 }}>
               <span style={{ display: 'inline-block', background: '#ffe3e3', color: '#ff696f', fontWeight: 500, fontSize: 16, padding: '4px 8px', borderRadius: 4 }}>
                 Запрошуємо на знайомство

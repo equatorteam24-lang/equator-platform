@@ -308,14 +308,14 @@ export default async function HomePage() {
                 <div className="relative rounded-[20px] overflow-hidden w-full lg:w-[500px] h-[380px] lg:h-[460px] flex-shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={c.trust.aboutPhoto} alt="Roofing Work" className="w-full h-full object-cover" />
-                  <div className="absolute top-6 left-6">
+                  <a href="/" className="absolute top-6 left-6">
                     <div className="relative w-[100px] h-[37px]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={LOGO_TOP} alt="Roofing" className="absolute top-0 left-0 h-[23px] w-auto" />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={LOGO_WORK} alt="Work"   className="absolute bottom-0 left-[31px] h-[15px] w-auto" />
                     </div>
-                  </div>
+                  </a>
                 </div>
               )}
               <div className="flex flex-col gap-6 flex-1">

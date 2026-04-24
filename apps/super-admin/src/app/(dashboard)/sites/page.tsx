@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
+import DeleteButton from './DeleteButton'
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft:      { label: 'Чернетка',    color: 'bg-gray-100 text-gray-600' },
@@ -80,13 +81,16 @@ export default async function SitesPage() {
                   <td className="px-4 py-3 text-gray-400">
                     {new Date(p.created_at).toLocaleDateString('uk-UA')}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/sites/${p.id}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Відкрити
-                    </Link>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/sites/${p.id}`}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Відкрити
+                      </Link>
+                      <DeleteButton projectId={p.id} projectName={p.name} />
+                    </div>
                   </td>
                 </tr>
               )
@@ -115,10 +119,13 @@ export default async function SitesPage() {
                     <td className="px-4 py-3 text-gray-400 text-xs">
                       {new Date(p.created_at).toLocaleDateString('uk-UA')}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/sites/${p.id}`} className="text-gray-400 hover:text-gray-600">
-                        Деталі
-                      </Link>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-3">
+                        <Link href={`/sites/${p.id}`} className="text-gray-400 hover:text-gray-600">
+                          Деталі
+                        </Link>
+                        <DeleteButton projectId={p.id} projectName={p.name} />
+                      </div>
                     </td>
                   </tr>
                 ))}

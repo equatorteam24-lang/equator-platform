@@ -727,6 +727,27 @@ async function handleSnapshot(req, res, projectId) {
   }
 }
 
+// ─── Delete project files ───
+function handleDeleteProject(res, projectId) {
+  // Delete project directory
+  const projectDir = path.join(PROJECTS_DIR, projectId)
+  if (fs.existsSync(projectDir)) {
+    fs.rmSync(projectDir, { recursive: true, force: true })
+    console.log(`Deleted project dir: ${projectDir}`)
+  }
+
+  // Delete all job files for this project
+  if (fs.existsSync(JOBS_DIR)) {
+    const jobFiles = fs.readdirSync(JOBS_DIR).filter(f => f.startsWith(projectId))
+    for (const f of jobFiles) {
+      fs.unlinkSync(path.join(JOBS_DIR, f))
+      console.log(`Deleted job file: ${f}`)
+    }
+  }
+
+  respond(res, 200, { ok: true })
+}
+
 // ─── Job status ───
 function handleJobStatus(res, jobId) {
   const job = loadJob(jobId)
@@ -742,7 +763,7 @@ function handleHealth(res) {
 // ─── HTTP Server ───
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return }
 
@@ -771,6 +792,9 @@ const server = http.createServer(async (req, res) => {
 
     const snapshotMatch = pathname.match(/^\/snapshot\/([a-f0-9-]+)$/)
     if (req.method === 'POST' && snapshotMatch) return await handleSnapshot(req, res, snapshotMatch[1])
+
+    const deleteMatch = pathname.match(/^\/delete-project\/([a-f0-9-]+)$/)
+    if (req.method === 'DELETE' && deleteMatch) return handleDeleteProject(res, deleteMatch[1])
 
     const jobMatch = pathname.match(/^\/job\/([a-f0-9-]+(?:-chat-\d+)?)$/)
     if (req.method === 'GET' && jobMatch) return handleJobStatus(res, jobMatch[1])

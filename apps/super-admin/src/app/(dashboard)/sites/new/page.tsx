@@ -21,6 +21,29 @@ const STYLES = [
 ]
 
 type UploadedFile = { name: string; url: string; size: number; type: string }
+type ReferenceImage = { name: string; url: string; note: string }
+
+const LAYOUT_OPTIONS = [
+  { value: 'asymmetric', label: 'Асиметричний' },
+  { value: 'classic', label: 'Класичний' },
+  { value: 'editorial', label: 'Журнальний' },
+  { value: 'overlapping', label: 'З перекриттями' },
+  { value: 'grid', label: 'Сітка' },
+]
+
+const PHOTO_OPTIONS = [
+  { value: 'fullwidth', label: 'На всю ширину' },
+  { value: 'framed', label: 'В рамках / rounded' },
+  { value: 'overlay', label: 'З оверлеєм' },
+  { value: 'parallax', label: 'Parallax' },
+  { value: 'masked', label: 'Маски / clip-path' },
+]
+
+const ANIMATION_OPTIONS = [
+  { value: 'minimal', label: 'Мінімальні' },
+  { value: 'medium', label: 'Помірні' },
+  { value: 'wow', label: 'WOW-ефекти' },
+]
 
 export default function NewSitePage() {
   const router = useRouter()
@@ -50,6 +73,16 @@ export default function NewSitePage() {
   const [address, setAddress] = useState('')
   const [socials, setSocials] = useState('')
   const [extraWishes, setExtraWishes] = useState('')
+
+  // Visual style tags
+  const [layoutStyle, setLayoutStyle] = useState<string[]>([])
+  const [photoStyle, setPhotoStyle] = useState<string[]>([])
+  const [animationLevel, setAnimationLevel] = useState('medium')
+
+  // Reference screenshots
+  const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([])
+  const [uploadingRef, setUploadingRef] = useState(false)
+  const refInputRef = useRef<HTMLInputElement>(null)
 
   // File uploads
   const [materialFiles, setMaterialFiles] = useState<UploadedFile[]>([])
@@ -136,6 +169,49 @@ export default function NewSitePage() {
     setMaterialFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  // ── Reference image upload ──
+  const handleRefUpload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploadingRef(true)
+    setError('')
+
+    const formData = new FormData()
+    for (const file of Array.from(files)) {
+      formData.append('files', file)
+    }
+    formData.append('folder', 'references')
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || 'Помилка завантаження')
+        setUploadingRef(false)
+        return
+      }
+      const data = await res.json()
+      setReferenceImages(prev => [
+        ...prev,
+        ...data.files.map((f: UploadedFile) => ({ name: f.name, url: f.url, note: '' })),
+      ])
+    } catch {
+      setError('Помилка мережі при завантаженні')
+    }
+    setUploadingRef(false)
+  }
+
+  const updateRefNote = (index: number, note: string) => {
+    setReferenceImages(prev => prev.map((r, i) => i === index ? { ...r, note } : r))
+  }
+
+  const removeRef = (index: number) => {
+    setReferenceImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const toggleTag = (current: string[], value: string, setter: (v: string[]) => void) => {
+    setter(current.includes(value) ? current.filter(v => v !== value) : [...current, value])
+  }
+
   // ── AI parse description into form fields ──
   const handleParseDescription = async () => {
     if (!freeDescription.trim()) {
@@ -204,6 +280,9 @@ export default function NewSitePage() {
         bgColor,
         textColor,
         designStyle,
+        layoutStyle,
+        photoStyle,
+        animationLevel,
         companyName,
         companyDescription,
         phone,
@@ -213,6 +292,7 @@ export default function NewSitePage() {
         extraWishes,
         freeDescription,
         clientMaterials: materialFiles.map(f => ({ name: f.name, url: f.url, type: f.type })),
+        referenceImages: referenceImages.map(r => ({ name: r.name, url: r.url, note: r.note })),
       }
 
       const res = await fetch('/api/sites', {
@@ -426,8 +506,117 @@ export default function NewSitePage() {
           </div>
         </Section>
 
-        {/* ─── 05. Матеріали клієнта ─── */}
-        <Section title="Матеріали клієнта" num="05">
+        {/* ─── 05. Візуальний стиль ─── */}
+        <Section title="Візуальний стиль" num="05">
+          <Field label="Лейаут" hint="Оберіть один або кілька варіантів">
+            <div className="flex flex-wrap gap-2">
+              {LAYOUT_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => toggleTag(layoutStyle, opt.value, setLayoutStyle)}
+                  className={`tag-btn ${layoutStyle.includes(opt.value) ? 'tag-btn--active' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Стиль фото" hint="Як показувати зображення на сайті">
+            <div className="flex flex-wrap gap-2">
+              {PHOTO_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => toggleTag(photoStyle, opt.value, setPhotoStyle)}
+                  className={`tag-btn ${photoStyle.includes(opt.value) ? 'tag-btn--active' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label="Рівень анімацій">
+            <div className="flex gap-2">
+              {ANIMATION_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setAnimationLevel(opt.value)}
+                  className={`tag-btn ${animationLevel === opt.value ? 'tag-btn--active' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </Section>
+
+        {/* ─── 06. Референс-скріншоти ─── */}
+        <Section title="Референс-скріншоти" num="06">
+          <p className="text-xs text-gray-400 -mt-2 mb-3">
+            Завантажте скріншоти сайтів які подобаються. До кожного напишіть що саме взяти: лейаут, кольори, стиль карток тощо.
+          </p>
+          <input
+            ref={refInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={e => handleRefUpload(e.target.files)}
+          />
+          <button
+            type="button"
+            onClick={() => refInputRef.current?.click()}
+            disabled={uploadingRef}
+            className="file-upload-btn"
+          >
+            {uploadingRef ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                Завантажую...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                </svg>
+                Додати скріншот-референс
+              </span>
+            )}
+          </button>
+          {referenceImages.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {referenceImages.map((ref, i) => (
+                <div key={i} className="flex gap-4 items-start p-3 rounded-lg border border-gray-200 bg-gray-50">
+                  <div className="relative group flex-shrink-0">
+                    <img src={ref.url} alt={ref.name} className="w-32 h-24 object-cover rounded-lg border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => removeRef(i)}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 mb-1.5">{ref.name}</p>
+                    <textarea
+                      value={ref.note}
+                      onChange={e => updateRefNote(i, e.target.value)}
+                      rows={2}
+                      placeholder="Що подобається: лейаут hero, палітра кольорів, стиль карток послуг, типографіка..."
+                      className="input text-xs"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* ─── 07. Матеріали клієнта ─── */}
+        <Section title="Матеріали клієнта" num="07">
           <p className="text-xs text-gray-400 -mt-2 mb-3">
             Логотип, фото команди, продукції, офісу — все що потрібно використати на сайті замість стокових фото.
           </p>
@@ -484,8 +673,8 @@ export default function NewSitePage() {
           )}
         </Section>
 
-        {/* ─── 06. Контент ─── */}
-        <Section title="Контент та контакти" num="06">
+        {/* ─── 08. Контент ─── */}
+        <Section title="Контент та контакти" num="08">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Назва компанії" required>
               <input
@@ -612,6 +801,26 @@ export default function NewSitePage() {
         .file-upload-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+        .tag-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 9999px;
+          border: 1px solid #d1d5db;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          color: #6b7280;
+          background: white;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .tag-btn:hover {
+          border-color: #3b82f6;
+          color: #3b82f6;
+        }
+        .tag-btn--active {
+          background: #eff6ff;
+          border-color: #3b82f6;
+          color: #2563eb;
         }
       `}</style>
     </div>

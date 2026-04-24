@@ -7,6 +7,7 @@ import { useState } from 'react'
 const nav = [
   { href: '/organizations', label: 'Сайти клієнтів', icon: '🌐' },
   { href: '/sites',         label: 'Конструктор',     icon: '🏗' },
+  { href: '/brief',         label: 'Бриф → Промпт',   icon: '📋' },
   { href: '/payments',      label: 'Оплати',          icon: '💳' },
   { href: '/settings',      label: 'Налаштування',     icon: '⚙️' },
 ]
@@ -20,7 +21,7 @@ export default function Sidebar() {
       <div className={`flex items-center border-b border-gray-200 ${collapsed ? 'justify-center py-4' : 'justify-between px-5 py-5'}`}>
         {!collapsed && (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Equator</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Uniframe</p>
             <p className="text-sm font-bold text-gray-900">Super Admin</p>
           </div>
         )}

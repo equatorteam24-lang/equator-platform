@@ -12,7 +12,7 @@ const fs = require('fs')
 const path = require('path')
 
 const PORT = process.env.BRIDGE_PORT || 3001
-const SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
+const SECRET = process.env.BRIDGE_SECRET || 'uniframe-bridge-secret-change-me'
 const PROJECTS_DIR = path.join(__dirname, '..', 'tmp-sites')
 const JOBS_DIR = path.join(__dirname, 'jobs')
 
@@ -325,7 +325,7 @@ async function handleParseBrief(req, res) {
   const { description } = await parseBody(req)
   if (!description?.trim()) return respond(res, 400, { error: 'description required' })
 
-  const prompt = `Ти — помічник веб-агентства Equator. Розбери вільний опис проекту на структуровані поля.
+  const prompt = `Ти — помічник веб-агентства Uniframe. Розбери вільний опис проекту на структуровані поля.
 
 Опис:
 """
@@ -360,6 +360,64 @@ ${description}
     if (!jsonMatch) return respond(res, 500, { error: 'Failed to parse AI response' })
     const parsed = JSON.parse(jsonMatch[0])
     respond(res, 200, parsed)
+  } catch (err) {
+    respond(res, 500, { error: err.message })
+  }
+}
+
+// ─── Generate prompt from brief ───
+async function handleGeneratePrompt(req, res) {
+  const { brief } = await parseBody(req)
+  if (!brief?.trim()) return respond(res, 400, { error: 'brief required' })
+
+  const prompt = `Ти — помічник веб-агентства Uniframe. Твоя задача — перетворити сирий бриф від клієнта в чітке технічне завдання для AI-агента, який буде створювати сайт.
+
+БРИФ ВІД КЛІЄНТА:
+"""
+${brief}
+"""
+
+ПРАВИЛА:
+1. Сформуй структуру сайту — список блоків (секцій) в порядку від початку до кінця сторінки
+2. Для кожного блоку напиши КОНКРЕТНИЙ текст який буде на сайті (заголовки, підзаголовки, абзаци, пункти списків, тексти кнопок)
+3. НЕ пиши коментарі про оформлення, дизайн, кольори, шрифти — тільки структура і контент
+4. Якщо в брифі недостатньо тексту — допиши реалістичний контент сам, відповідно до сфери діяльності
+5. Всі тексти УКРАЇНСЬКОЮ
+6. Для кожного блоку вкажи тип: Hero, About, Services, Gallery, Testimonials, CTA, Contacts, FAQ, Team, Process, Stats тощо
+7. Контактні дані бери з брифу як є (не вигадуй телефони/email)
+
+ФОРМАТ ВІДПОВІДІ (саме цей формат, без обгортки в markdown):
+
+НАЗВА ПРОЕКТУ: [назва]
+КОМПАНІЯ: [назва компанії]
+ОПИС: [1-2 речення про компанію]
+
+---
+
+БЛОК 1: [тип блоку]
+Заголовок: [текст]
+Підзаголовок: [текст]
+Текст: [текст]
+Кнопка: [текст кнопки]
+
+---
+
+БЛОК 2: [тип блоку]
+...і так далі для кожного блоку.
+
+В кінці додай секцію:
+
+---
+
+КОНТАКТИ:
+Телефон: [якщо є]
+Email: [якщо є]
+Адреса: [якщо є]
+Соцмережі: [якщо є]`
+
+  try {
+    const output = await runClaude(prompt, { timeout: 120000 })
+    respond(res, 200, { prompt: output })
   } catch (err) {
     respond(res, 500, { error: err.message })
   }
@@ -416,7 +474,7 @@ async function handleGenerateSite(req, res) {
       const skillPrompt = `/premium-web-design\n\n## ОБОВ'ЯЗКОВІ ДЕФОЛТНІ ПРАВИЛА ДИЗАЙНУ\nНаступні правила повинні бути дотримані в кожному сайті. Клієнт може змінити їх пізніше через правки, але початковий сайт ПОВИНЕН відповідати цим стандартам:\n\n${DESIGN_DEFAULTS}\n\n---\n\n## ЗАВДАННЯ\n${prompt}`
       const output = await runClaude(skillPrompt, {
         cwd: projectDir,
-        maxTurns: 30,
+        maxTurns: 50,
         timeout: 900000,
       })
 
@@ -435,7 +493,7 @@ async function handleGenerateSite(req, res) {
       try {
         execSync('git init', { cwd: projectDir, stdio: 'pipe' })
         execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
-        execSync('git commit -m "initial site generation"', { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' } })
+        execSync('git commit -m "initial site generation"', { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@uniframe.app', GIT_COMMITTER_EMAIL: 'bridge@uniframe.app' } })
       } catch (e) { console.error('Git init error:', e.message) }
 
       // Build & deploy
@@ -482,7 +540,7 @@ async function handleDiscuss(req, res, projectId) {
     if (lines.length) siteInfo = '\n\n## ПОТОЧНИЙ САЙТ\n' + lines.join('\n')
   }
 
-  const discussPrompt = `Ти — дизайн-консультант веб-агентства Equator. Відповідай коротко (2-4 речення), українською.
+  const discussPrompt = `Ти — дизайн-консультант веб-агентства Uniframe. Відповідай коротко (2-4 речення), українською.
 ${siteInfo}
 
 Допомагай з:
@@ -524,7 +582,7 @@ async function handleChat(req, res, projectId) {
 
   const chatPrompt = `
 # КОНТЕКСТ
-Ти — агент-конструктор сайтів Equator Agency.
+Ти — агент-конструктор сайтів Uniframe.
 
 ## БЕЗПЕКА
 ⛔ Працюй ВИКЛЮЧНО в поточній папці проекту.
@@ -564,7 +622,7 @@ ${DESIGN_DEFAULTS}
     try {
       const output = await runClaude(chatPrompt, {
         cwd: projectDir,
-        maxTurns: 30,
+        maxTurns: 50,
         timeout: 900000,
         allowedTools: 'Read,Edit,Bash,Glob,Grep',
       })
@@ -577,7 +635,7 @@ ${DESIGN_DEFAULTS}
       try {
         execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
         const commitMsg = message.slice(0, 100).replace(/"/g, '\\"')
-        execSync(`git commit -m "edit: ${commitMsg}"`, { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' } })
+        execSync(`git commit -m "edit: ${commitMsg}"`, { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@uniframe.app', GIT_COMMITTER_EMAIL: 'bridge@uniframe.app' } })
       } catch (e) { console.error('Git commit error:', e.message) }
 
       // Save output before build so notifySupabase in buildAndDeploy can read it
@@ -627,7 +685,7 @@ async function handleRollback(req, res, projectId) {
       // Restore files from target commit
       execSync(`git checkout ${target} -- .`, { cwd: projectDir, stdio: 'pipe' })
       execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
-      execSync(`git commit -m "rollback to ${target}"`, { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' } })
+      execSync(`git commit -m "rollback to ${target}"`, { cwd: projectDir, stdio: 'pipe', env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@uniframe.app', GIT_COMMITTER_EMAIL: 'bridge@uniframe.app' } })
 
       let generatedCode = ''
       try { generatedCode = fs.readFileSync(path.join(projectDir, 'src', 'App.jsx'), 'utf-8') }
@@ -660,7 +718,7 @@ async function handleSnapshot(req, res, projectId) {
     execSync('git add -A', { cwd: projectDir, stdio: 'pipe' })
     execSync(`git commit --allow-empty -m "${commitMsg.replace(/"/g, '\\"')}"`, {
       cwd: projectDir, stdio: 'pipe',
-      env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@equator.agency', GIT_COMMITTER_EMAIL: 'bridge@equator.agency' },
+      env: { ...process.env, GIT_AUTHOR_NAME: 'bridge', GIT_COMMITTER_NAME: 'bridge', GIT_AUTHOR_EMAIL: 'bridge@uniframe.app', GIT_COMMITTER_EMAIL: 'bridge@uniframe.app' },
     })
     const hash = execSync('git rev-parse --short HEAD', { cwd: projectDir, encoding: 'utf-8' }).trim()
     respond(res, 200, { status: 'saved', hash, message: commitMsg })
@@ -696,6 +754,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (pathname === '/health') return handleHealth(res)
     if (req.method === 'POST' && pathname === '/parse-brief') return await handleParseBrief(req, res)
+    if (req.method === 'POST' && pathname === '/generate-prompt') return await handleGeneratePrompt(req, res)
     if (req.method === 'POST' && pathname === '/generate-site') return await handleGenerateSite(req, res)
 
     const discussMatch = pathname.match(/^\/discuss\/([a-f0-9-]+)$/)

@@ -82,11 +82,15 @@ export default function NewSitePage() {
   // Reference screenshots
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([])
   const [uploadingRef, setUploadingRef] = useState(false)
+  const [refUrlInput, setRefUrlInput] = useState('')
+  const [refUrlLoading, setRefUrlLoading] = useState(false)
   const refInputRef = useRef<HTMLInputElement>(null)
 
   // File uploads
   const [materialFiles, setMaterialFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState<string | null>(null)
+  const [urlInput, setUrlInput] = useState('')
+  const [urlLoading, setUrlLoading] = useState(false)
   const matInputRef = useRef<HTMLInputElement>(null)
 
   // ── Voice recording (Web Speech API) ──
@@ -169,6 +173,33 @@ export default function NewSitePage() {
     setMaterialFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  // ── Upload from URL ──
+  const handleUrlUpload = async () => {
+    if (!urlInput.trim()) return
+    setUrlLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlInput.trim(), folder: 'materials' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || 'Не вдалося завантажити')
+        setUrlLoading(false)
+        return
+      }
+      const data = await res.json()
+      setMaterialFiles(prev => [...prev, data.file])
+      setUrlInput('')
+    } catch {
+      setError('Мережева помилка')
+    }
+    setUrlLoading(false)
+  }
+
   // ── Reference image upload ──
   const handleRefUpload = async (files: FileList | null) => {
     if (!files?.length) return
@@ -198,6 +229,32 @@ export default function NewSitePage() {
       setError('Помилка мережі при завантаженні')
     }
     setUploadingRef(false)
+  }
+
+  const handleRefUrlUpload = async () => {
+    if (!refUrlInput.trim()) return
+    setRefUrlLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: refUrlInput.trim(), folder: 'references' }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || 'Не вдалося завантажити')
+        setRefUrlLoading(false)
+        return
+      }
+      const data = await res.json()
+      setReferenceImages(prev => [...prev, { name: data.file.name, url: data.file.url, note: '' }])
+      setRefUrlInput('')
+    } catch {
+      setError('Мережева помилка')
+    }
+    setRefUrlLoading(false)
   }
 
   const updateRefNote = (index: number, note: string) => {
@@ -555,8 +612,30 @@ export default function NewSitePage() {
         {/* ─── 06. Референс-скріншоти ─── */}
         <Section title="Референс-скріншоти" num="06">
           <p className="text-xs text-gray-400 -mt-2 mb-3">
-            Завантажте скріншоти сайтів які подобаються. До кожного напишіть що саме взяти: лейаут, кольори, стиль карток тощо.
+            Вставте посилання або завантажте скріншоти сайтів які подобаються. До кожного напишіть що саме взяти.
           </p>
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={refUrlInput}
+              onChange={e => setRefUrlInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleRefUrlUpload())}
+              placeholder="Вставте посилання на зображення-референс"
+              className="input flex-1"
+            />
+            <button
+              type="button"
+              onClick={handleRefUrlUpload}
+              disabled={refUrlLoading || !refUrlInput.trim()}
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex-shrink-0"
+            >
+              {refUrlLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                </span>
+              ) : 'Додати'}
+            </button>
+          </div>
           <input
             ref={refInputRef}
             type="file"
@@ -618,8 +697,36 @@ export default function NewSitePage() {
         {/* ─── 07. Матеріали клієнта ─── */}
         <Section title="Матеріали клієнта" num="07">
           <p className="text-xs text-gray-400 -mt-2 mb-3">
-            Логотип, фото команди, продукції, офісу — все що потрібно використати на сайті замість стокових фото.
+            Логотип, фото команди, продукції — завантажте файли або вставте посилання (Freepik, Unsplash тощо).
           </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={urlInput}
+              onChange={e => setUrlInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleUrlUpload())}
+              placeholder="Вставте посилання на зображення (Freepik, Unsplash...)"
+              className="input flex-1"
+            />
+            <button
+              type="button"
+              onClick={handleUrlUpload}
+              disabled={urlLoading || !urlInput.trim()}
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex-shrink-0"
+            >
+              {urlLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Завантажую...
+                </span>
+              ) : 'Додати'}
+            </button>
+          </div>
+          <div className="relative flex items-center my-3">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="px-3 text-xs text-gray-400">або</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
           <input
             ref={matInputRef}
             type="file"

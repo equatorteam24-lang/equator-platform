@@ -37,9 +37,9 @@ export default function SiteProjectPage() {
   const chatFileRef = useRef<HTMLInputElement>(null)
 
   const viewModes = {
-    desktop: { width: '100%', icon: '\u{1F5A5}', label: 'Desktop' },
-    tablet:  { width: '768px', icon: '\u{1F4F1}', label: 'Tablet' },
-    mobile:  { width: '375px', icon: '\u{1F4F1}', label: 'Mobile' },
+    desktop: { width: '100%', height: '100%', icon: '\u{1F5A5}', label: 'Desktop' },
+    tablet:  { width: '768px', height: '1024px', icon: '\u{1F4F1}', label: 'Tablet' },
+    mobile:  { width: '375px', height: '812px', icon: '\u{1F4F1}', label: 'Mobile' },
   } as const
 
   // Fetch project data
@@ -637,10 +637,12 @@ export default function SiteProjectPage() {
               </div>
             ) : project.vercel_url || project.generated_code ? (
               <div
-                className="h-full transition-all duration-300 ease-in-out"
+                className="transition-all duration-300 ease-in-out"
                 style={{
                   width: viewModes[viewMode].width,
+                  height: viewModes[viewMode].height,
                   maxWidth: '100%',
+                  maxHeight: '100%',
                   boxShadow: viewMode !== 'desktop' ? '0 0 0 1px rgba(0,0,0,0.08), 0 4px 24px rgba(0,0,0,0.12)' : 'none',
                   borderRadius: viewMode !== 'desktop' ? '12px' : '0',
                   overflow: 'hidden',
@@ -650,8 +652,7 @@ export default function SiteProjectPage() {
                 <iframe
                   ref={iframeRef}
                   src={project.vercel_url || `/api/sites/${id}/preview`}
-                  className="w-full border-none bg-white"
-                  style={{ height: viewMode !== 'desktop' ? 'calc(100% - 0px)' : '100%' }}
+                  className="w-full h-full border-none bg-white"
                   title="Site preview"
                 />
               </div>

@@ -1,4 +1,4 @@
-import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
+import { bridgeFetch } from '@/lib/bridge'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -17,13 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const bridgeUrl = await getBridgeUrl()
-    const res = await fetch(`${bridgeUrl}/parse-brief`, {
+    const res = await bridgeFetch('/parse-brief', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${BRIDGE_SECRET}`,
-      },
       body: JSON.stringify({ description }),
     })
 

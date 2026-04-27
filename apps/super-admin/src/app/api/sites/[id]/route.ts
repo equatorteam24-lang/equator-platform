@@ -1,4 +1,4 @@
-import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
+import { bridgeFetch } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
@@ -53,13 +53,9 @@ async function syncFromBridge(projectId: string, project: any, service: any) {
       ? [storedJobId, projectId].filter(Boolean)
       : [projectId]
 
-    const bridgeUrl = await getBridgeUrl()
     for (const jobId of jobIds) {
       try {
-        const res = await fetch(`${bridgeUrl}/job/${jobId}`, {
-          headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
-          signal: AbortSignal.timeout(5000),
-        })
+        const res = await bridgeFetch(`/job/${jobId}`, { method: 'GET' }, 5000)
         if (!res.ok) continue
 
         const job = await res.json()
@@ -155,11 +151,7 @@ export async function DELETE(
 
   // 3. Delete files from bridge (tmp-sites folder)
   try {
-    const bridgeUrl = await getBridgeUrl()
-    await fetch(`${bridgeUrl}/delete-project/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
-    })
+    await bridgeFetch(`/delete-project/${id}`, { method: 'DELETE' })
   } catch (err) {
     console.error('Bridge delete error:', err)
   }

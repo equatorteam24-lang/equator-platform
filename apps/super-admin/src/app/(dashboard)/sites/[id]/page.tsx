@@ -66,10 +66,17 @@ export default function SiteProjectPage() {
 
       // Detect transition: revising/generating → review (work finished)
       if ((prev === 'revising' || prev === 'generating') && data.status === 'review') {
-        // Reload iframe when revisions complete
-        if (iframeRef.current) {
-          iframeRef.current.src = iframeRef.current.src
-        }
+        // Update state FIRST so iframe gets the new vercel_url
+        setProject(data)
+        // Force iframe reload with cache-busting after React re-renders
+        setTimeout(() => {
+          if (iframeRef.current) {
+            const base = data.vercel_url || `/api/sites/${id}/preview`
+            const sep = base.includes('?') ? '&' : '?'
+            iframeRef.current.src = `${base}${sep}_t=${Date.now()}`
+          }
+        }, 100)
+        return
       }
 
       setProject(data)
@@ -283,6 +290,21 @@ export default function SiteProjectPage() {
     setChatSending(false)
   }
 
+  // Delete a pending revision message (by its index in the full chat_history)
+  const deleteRevisionMessage = async (globalIndex: number) => {
+    const updated = (project.chat_history || []).filter((_: any, i: number) => i !== globalIndex)
+    setProject((prev: any) => ({ ...prev, chat_history: updated }))
+    try {
+      await fetch(`/api/sites/${id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteIndex: globalIndex }),
+      })
+    } catch (err) {
+      console.error('Delete message error:', err)
+    }
+  }
+
   // Apply revisions via bridge
   const applyChanges = async () => {
     if (chatSending) return
@@ -362,7 +384,10 @@ export default function SiteProjectPage() {
       if (res.ok) {
         await fetchProject()
         await fetchVersions()
-        if (iframeRef.current) iframeRef.current.src = iframeRef.current.src
+        if (iframeRef.current) {
+          const base = iframeRef.current.src.split('?')[0]
+          iframeRef.current.src = `${base}?_t=${Date.now()}`
+        }
       }
     } catch {}
     setRollbackingHash(null)
@@ -403,10 +428,12 @@ export default function SiteProjectPage() {
   const isGenerating = project.status === 'generating' || project.status === 'revising'
   const allMessages = project.chat_history || []
 
-  // Filter messages by current tab (show messages without tab in both tabs for backwards compat)
-  const tabMessages = allMessages.filter((msg: any) =>
-    msg.tab === chatTab || (!msg.tab && chatTab === 'discuss')
-  )
+  // Filter messages by current tab, preserving global index for deletion
+  const tabMessages = allMessages
+    .map((msg: any, i: number) => ({ ...msg, _globalIndex: i }))
+    .filter((msg: any) =>
+      msg.tab === chatTab || (!msg.tab && chatTab === 'discuss')
+    )
 
   // Check if there are pending revision messages (after last bridge response)
   const revisionMessages = allMessages.filter((msg: any) => msg.tab === 'revisions')
@@ -418,6 +445,17 @@ export default function SiteProjectPage() {
     }
     return hasUserMsg
   })()
+
+  // Set of global indices for pending (deletable) revision user messages
+  const pendingRevisionIndices = new Set<number>()
+  if (chatTab === 'revisions' && !isGenerating) {
+    for (let i = allMessages.length - 1; i >= 0; i--) {
+      const m = allMessages[i]
+      if (m.tab !== 'revisions') continue
+      if (m.role === 'assistant' && m.source === 'bridge') break
+      if (m.role === 'user') pendingRevisionIndices.add(i)
+    }
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -760,8 +798,20 @@ export default function SiteProjectPage() {
               }
 
               // Regular user/assistant messages
+              const isDeletable = pendingRevisionIndices.has(msg._globalIndex)
               return (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div key={i} className={`group/msg flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {isDeletable && (
+                    <button
+                      onClick={() => deleteRevisionMessage(msg._globalIndex)}
+                      className="self-center mr-1.5 opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 text-gray-300 hover:text-red-500"
+                      title="Видалити"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
+                    </button>
+                  )}
                   <div
                     className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm ${
                       msg.role === 'user'

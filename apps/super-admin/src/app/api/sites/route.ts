@@ -1,4 +1,4 @@
-import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
+import { bridgeFetch } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
@@ -41,18 +41,14 @@ export async function POST(req: NextRequest) {
   const prompt = buildPrompt(formData, project.id)
 
   // Launch generation via bridge (non-blocking)
-  getBridgeUrl().then(bridgeUrl => fetch(`${bridgeUrl}/generate-site`, {
+  bridgeFetch('/generate-site', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${BRIDGE_SECRET}`,
-    },
     body: JSON.stringify({
       projectId: project.id,
       formData,
       prompt,
     }),
-  })).then(async (res) => {
+  }).then(async (res) => {
     if (!res.ok) {
       console.error('Bridge generate error:', await res.text())
       await service.from('site_projects').update({ status: 'draft' }).eq('id', project.id)
@@ -75,11 +71,7 @@ async function pollJob(projectId: string, service: any) {
 
   const interval = setInterval(async () => {
     try {
-      const bridgeUrl = await getBridgeUrl()
-      const res = await fetch(`${bridgeUrl}/job/${projectId}`, {
-        headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
-        signal: AbortSignal.timeout(8000),
-      })
+      const res = await bridgeFetch(`/job/${projectId}`, { method: 'GET' }, 8000)
 
       if (!res.ok) {
         consecutiveFailures++

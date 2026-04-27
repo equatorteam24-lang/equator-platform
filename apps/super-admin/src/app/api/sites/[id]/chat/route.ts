@@ -1,4 +1,4 @@
-import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
+import { bridgeFetch } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
@@ -16,11 +16,12 @@ export async function POST(
   if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const { message, attachments, apply, tab } = body as {
+  const { message, attachments, apply, tab, deleteIndex } = body as {
     message?: string
     attachments?: { name: string; url: string }[]
     apply?: boolean
     tab?: 'discuss' | 'revisions'
+    deleteIndex?: number
   }
 
   const service = createServiceClient()
@@ -37,6 +38,19 @@ export async function POST(
   }
 
   let chatHistory = [...(project.chat_history || [])]
+
+  // === Delete message mode ===
+  if (typeof deleteIndex === 'number') {
+    const msg = chatHistory[deleteIndex]
+    if (msg?.role === 'user' && msg?.tab === 'revisions') {
+      chatHistory.splice(deleteIndex, 1)
+      await service.from('site_projects')
+        .update({ chat_history: chatHistory, updated_at: new Date().toISOString() })
+        .eq('id', id)
+      return NextResponse.json({ status: 'deleted' })
+    }
+    return NextResponse.json({ error: 'Не можна видалити це повідомлення' }, { status: 400 })
+  }
 
   // If there's a message, add it to chat history
   if (message?.trim() || attachments?.length) {
@@ -95,16 +109,10 @@ export async function POST(
         bridgeMessage += '\n\n📎 Прикріплені файли:\n' + attachments.map((a) => `- ${a.name}: ${a.url}`).join('\n')
       }
 
-      const bridgeUrl = await getBridgeUrl()
-      const bridgeRes = await fetch(`${bridgeUrl}/discuss/${id}`, {
+      const bridgeRes = await bridgeFetch(`/discuss/${id}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${BRIDGE_SECRET}`,
-        },
         body: JSON.stringify({ message: bridgeMessage, history: discussHistory, siteContext }),
-        signal: AbortSignal.timeout(90000),
-      })
+      }, 90000)
 
       if (!bridgeRes.ok) {
         const err = await bridgeRes.json().catch(() => ({}))
@@ -168,13 +176,8 @@ async function handleApply(id: string, chatHistory: any[], service: any) {
   const bridgeMessage = unprocessedMessages.join('\n\n---\n\n')
 
   try {
-    const bridgeUrl = await getBridgeUrl()
-    const bridgeRes = await fetch(`${bridgeUrl}/chat/${id}`, {
+    const bridgeRes = await bridgeFetch(`/chat/${id}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${BRIDGE_SECRET}`,
-      },
       body: JSON.stringify({ message: bridgeMessage }),
     })
 
@@ -213,11 +216,7 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
 
   const interval = setInterval(async () => {
     try {
-      const bridgeUrl = await getBridgeUrl()
-      const res = await fetch(`${bridgeUrl}/job/${jobId}`, {
-        headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
-        signal: AbortSignal.timeout(8000),
-      })
+      const res = await bridgeFetch(`/job/${jobId}`, { method: 'GET' }, 8000)
 
       if (!res.ok) {
         consecutiveFailures++

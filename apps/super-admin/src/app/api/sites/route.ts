@@ -164,8 +164,19 @@ Uniframe — це веб-агентство що створює преміаль
 - Всі тексти УКРАЇНСЬКОЮ
 - React хуки: useState, useEffect, useRef
 - Форми з валідацією
-- Фото з Unsplash: https://images.unsplash.com/photo-{id}?w=1920&q=80
 - НЕ використовувати Lorem ipsum
+
+### Зображення та медіа — ТІЛЬКИ Freepik
+⚠️ КРИТИЧНО: Всі зображення ОБОВ'ЯЗКОВО брати з Freepik.
+- Використовуй WebSearch для пошуку: site:freepik.com {запит англійською}
+- Потім WebFetch щоб отримати сторінку Freepik і знайти прямий URL зображення
+- URL формат Freepik: https://img.freepik.com/free-photo/{slug}.jpg або https://img.freepik.com/premium-photo/{slug}.jpg
+- Додавай параметри розміру: ?w=1920&q=80 або ?w=1280&q=80 для менших зображень
+- ❌ ЗАБОРОНЕНО: Unsplash, Pexels, Pixabay, placeholder URLs, via.placeholder.com
+- ❌ ЗАБОРОНЕНО: вигадувати URL зображень — кожен URL має бути реальним, перевіреним через WebSearch/WebFetch
+- Шукай релевантні фото для кожної секції (hero, about, services тощо)
+- Мінімум 5-8 різних зображень на сайт для візуального різноманіття
+- Для відео: шукай відео на Freepik (site:freepik.com video {запит}) або використовуй відео-обкладинки
 `
 
   const brief: string[] = []
@@ -222,7 +233,7 @@ Uniframe — це веб-агентство що створює преміаль
     for (const mat of formData.clientMaterials) {
       brief.push(`- ${mat.name}: ${mat.url}`)
     }
-    brief.push(`⚠️ Ці зображення — реальні матеріали клієнта (логотип, фото команди, продукції тощо). Використовуй їх в <img src="URL"> замість Unsplash стоків де це доречно.`)
+    brief.push(`⚠️ Ці зображення — реальні матеріали клієнта (логотип, фото команди, продукції тощо). Використовуй їх в <img src="URL"> замість стокових фото де це доречно.`)
   }
 
   brief.push(`\n# ДІЙ — створи src/App.jsx з повним сайтом`)

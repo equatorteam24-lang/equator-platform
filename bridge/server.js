@@ -616,6 +616,13 @@ ${DESIGN_DEFAULTS}
 - Нові функції (Google Maps, слайдер) → встанови npm пакет і підключи
 - Етап 2 (адмінка, Supabase, CRM, аналітика, SEO, Telegram) → підключи інтеграцію
 - Після змін — підтверди що саме змінено (список конкретних змін)
+
+## ЗОБРАЖЕННЯ — ТІЛЬКИ Freepik
+Якщо потрібно замінити або додати зображення:
+- Використовуй WebSearch: site:freepik.com {запит англійською}
+- Потім WebFetch щоб знайти прямий URL зображення (https://img.freepik.com/...)
+- Додавай параметри розміру: ?w=1920&q=80
+- ❌ ЗАБОРОНЕНО: Unsplash, Pexels, Pixabay, вигадані URL
 `
 
   ;(async () => {
@@ -624,7 +631,7 @@ ${DESIGN_DEFAULTS}
         cwd: projectDir,
         maxTurns: 50,
         timeout: 900000,
-        allowedTools: 'Read,Edit,Bash,Glob,Grep',
+        allowedTools: 'Read,Edit,Bash,Glob,Grep,WebSearch,WebFetch',
       })
 
       let generatedCode = ''

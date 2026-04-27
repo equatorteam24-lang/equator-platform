@@ -1,8 +1,6 @@
+import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
-const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
 
 export async function GET(
   _req: NextRequest,
@@ -13,8 +11,9 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const bridgeUrl = await getBridgeUrl()
   try {
-    const res = await fetch(`${BRIDGE_URL}/versions/${id}`, {
+    const res = await fetch(`${bridgeUrl}/versions/${id}`, {
       headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
       signal: AbortSignal.timeout(5000),
     })
@@ -38,13 +37,14 @@ export async function POST(
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const bridgeUrl = await getBridgeUrl()
   const body = await req.json()
   const { action, commit, label } = body as { action: 'save' | 'rollback'; commit?: string; label?: string }
 
   if (action === 'save') {
     // Save a named snapshot (git tag-like commit)
     try {
-      const res = await fetch(`${BRIDGE_URL}/snapshot/${id}`, {
+      const res = await fetch(`${bridgeUrl}/snapshot/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export async function POST(
 
   if (action === 'rollback') {
     try {
-      const res = await fetch(`${BRIDGE_URL}/rollback/${id}`, {
+      const res = await fetch(`${bridgeUrl}/rollback/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

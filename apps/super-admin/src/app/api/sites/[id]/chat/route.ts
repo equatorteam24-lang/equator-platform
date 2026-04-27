@@ -1,9 +1,7 @@
+import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
-const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'equator-bridge-secret-change-me'
 
 export async function POST(
   req: NextRequest,
@@ -97,7 +95,8 @@ export async function POST(
         bridgeMessage += '\n\n📎 Прикріплені файли:\n' + attachments.map((a) => `- ${a.name}: ${a.url}`).join('\n')
       }
 
-      const bridgeRes = await fetch(`${BRIDGE_URL}/discuss/${id}`, {
+      const bridgeUrl = await getBridgeUrl()
+      const bridgeRes = await fetch(`${bridgeUrl}/discuss/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +168,8 @@ async function handleApply(id: string, chatHistory: any[], service: any) {
   const bridgeMessage = unprocessedMessages.join('\n\n---\n\n')
 
   try {
-    const bridgeRes = await fetch(`${BRIDGE_URL}/chat/${id}`, {
+    const bridgeUrl = await getBridgeUrl()
+    const bridgeRes = await fetch(`${bridgeUrl}/chat/${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -213,7 +213,8 @@ async function pollChatJob(jobId: string, projectId: string, chatHistory: any[],
 
   const interval = setInterval(async () => {
     try {
-      const res = await fetch(`${BRIDGE_URL}/job/${jobId}`, {
+      const bridgeUrl = await getBridgeUrl()
+      const res = await fetch(`${bridgeUrl}/job/${jobId}`, {
         headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
         signal: AbortSignal.timeout(8000),
       })

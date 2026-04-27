@@ -1,9 +1,7 @@
+import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
-const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'uniframe-bridge-secret-change-me'
 const STALE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
 
 export async function GET(
@@ -55,9 +53,10 @@ async function syncFromBridge(projectId: string, project: any, service: any) {
       ? [storedJobId, projectId].filter(Boolean)
       : [projectId]
 
+    const bridgeUrl = await getBridgeUrl()
     for (const jobId of jobIds) {
       try {
-        const res = await fetch(`${BRIDGE_URL}/job/${jobId}`, {
+        const res = await fetch(`${bridgeUrl}/job/${jobId}`, {
           headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
           signal: AbortSignal.timeout(5000),
         })
@@ -156,7 +155,8 @@ export async function DELETE(
 
   // 3. Delete files from bridge (tmp-sites folder)
   try {
-    await fetch(`${BRIDGE_URL}/delete-project/${id}`, {
+    const bridgeUrl = await getBridgeUrl()
+    await fetch(`${bridgeUrl}/delete-project/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
     })

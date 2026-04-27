@@ -1,8 +1,6 @@
+import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
-const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'uniframe-bridge-secret-change-me'
 
 export async function POST(req: NextRequest) {
   // Verify superadmin
@@ -19,7 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const res = await fetch(`${BRIDGE_URL}/generate-prompt`, {
+    const bridgeUrl = await getBridgeUrl()
+    const res = await fetch(`${bridgeUrl}/generate-prompt`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

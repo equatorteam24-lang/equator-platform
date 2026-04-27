@@ -1,9 +1,7 @@
+import { getBridgeUrl, BRIDGE_SECRET } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
-
-const BRIDGE_URL = process.env.BRIDGE_URL || 'http://localhost:3001'
-const BRIDGE_SECRET = process.env.BRIDGE_SECRET || 'uniframe-bridge-secret-change-me'
 
 export async function POST(req: NextRequest) {
   // Verify superadmin
@@ -43,7 +41,7 @@ export async function POST(req: NextRequest) {
   const prompt = buildPrompt(formData, project.id)
 
   // Launch generation via bridge (non-blocking)
-  fetch(`${BRIDGE_URL}/generate-site`, {
+  getBridgeUrl().then(bridgeUrl => fetch(`${bridgeUrl}/generate-site`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -54,7 +52,7 @@ export async function POST(req: NextRequest) {
       formData,
       prompt,
     }),
-  }).then(async (res) => {
+  })).then(async (res) => {
     if (!res.ok) {
       console.error('Bridge generate error:', await res.text())
       await service.from('site_projects').update({ status: 'draft' }).eq('id', project.id)
@@ -77,7 +75,8 @@ async function pollJob(projectId: string, service: any) {
 
   const interval = setInterval(async () => {
     try {
-      const res = await fetch(`${BRIDGE_URL}/job/${projectId}`, {
+      const bridgeUrl = await getBridgeUrl()
+      const res = await fetch(`${bridgeUrl}/job/${projectId}`, {
         headers: { 'Authorization': `Bearer ${BRIDGE_SECRET}` },
         signal: AbortSignal.timeout(8000),
       })

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import PublishModal from './PublishModal'
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft:      { label: 'Чернетка',     color: 'bg-gray-100 text-gray-600' },
@@ -32,6 +33,7 @@ export default function SiteProjectPage() {
   const [versionsOpen, setVersionsOpen] = useState(false)
   const [versionSaving, setVersionSaving] = useState(false)
   const [rollbackingHash, setRollbackingHash] = useState<string | null>(null)
+  const [publishModalOpen, setPublishModalOpen] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const chatFileRef = useRef<HTMLInputElement>(null)
@@ -564,12 +566,9 @@ export default function SiteProjectPage() {
               </div>
             </>
           )}
-          {project.status === 'review' && (
+          {project.status === 'review' && !project.org_id && (
             <button
-              onClick={async () => {
-                await saveVersion('publish')
-                // proceed with publish
-              }}
+              onClick={() => setPublishModalOpen(true)}
               className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-green-700 transition"
             >
               Опублікувати
@@ -948,6 +947,15 @@ export default function SiteProjectPage() {
           </div>
         </div>
       </div>
+
+      <PublishModal
+        projectId={id}
+        open={publishModalOpen}
+        onClose={() => setPublishModalOpen(false)}
+        onPublished={() => {
+          fetchProject()
+        }}
+      />
     </div>
   )
 }

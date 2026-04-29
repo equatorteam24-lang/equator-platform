@@ -20,6 +20,16 @@ function normalizeHost(host: string): string {
   return host.toLowerCase().replace(/^www\./, '').split(':')[0]
 }
 
+const PLATFORM_HOST = 'uniframe.app'
+
+function extractSubdomain(host: string): string | null {
+  if (host.endsWith(`.${PLATFORM_HOST}`)) {
+    const sub = host.slice(0, -(PLATFORM_HOST.length + 1))
+    if (sub && !sub.includes('.')) return sub
+  }
+  return null
+}
+
 export async function resolveOrgFromHost(rawHost: string): Promise<Org> {
   const host = normalizeHost(rawHost)
   const now = Date.now()
@@ -27,11 +37,22 @@ export async function resolveOrgFromHost(rawHost: string): Promise<Org> {
   if (cached && cached.expires > now) return cached.org
 
   const db = createServiceClient()
-  const { data, error } = await db
-    .from('organizations')
-    .select('id, slug, domain')
-    .eq('domain', host)
-    .maybeSingle()
+  const subdomain = extractSubdomain(host)
+
+  let data, error
+  if (subdomain) {
+    ;({ data, error } = await db
+      .from('organizations')
+      .select('id, slug, domain')
+      .eq('slug', subdomain)
+      .maybeSingle())
+  } else {
+    ;({ data, error } = await db
+      .from('organizations')
+      .select('id, slug, domain')
+      .eq('domain', host)
+      .maybeSingle())
+  }
 
   if (error || !data) {
     throw new Error(`Organization not found for host: ${rawHost}`)

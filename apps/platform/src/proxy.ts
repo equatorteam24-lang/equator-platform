@@ -13,6 +13,17 @@ function normalizeHost(host: string): string {
   return host.toLowerCase().replace(/^www\./, '').split(':')[0]
 }
 
+const PLATFORM_HOST = 'uniframe.app'
+
+function extractSubdomain(host: string): string | null {
+  const normalized = normalizeHost(host)
+  if (normalized.endsWith(`.${PLATFORM_HOST}`)) {
+    const sub = normalized.slice(0, -(PLATFORM_HOST.length + 1))
+    if (sub && !sub.includes('.')) return sub
+  }
+  return null
+}
+
 async function resolveSlugForHost(host: string): Promise<string | null> {
   const key = normalizeHost(host)
   const now = Date.now()
@@ -24,11 +35,24 @@ async function resolveSlugForHost(host: string): Promise<string | null> {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
-  const { data } = await db
-    .from('organizations')
-    .select('slug')
-    .eq('domain', key)
-    .maybeSingle()
+
+  // Check if this is a subdomain of uniframe.app (e.g., acme.uniframe.app)
+  const subdomain = extractSubdomain(host)
+
+  let data
+  if (subdomain) {
+    ;({ data } = await db
+      .from('organizations')
+      .select('slug')
+      .eq('slug', subdomain)
+      .maybeSingle())
+  } else {
+    ;({ data } = await db
+      .from('organizations')
+      .select('slug')
+      .eq('domain', key)
+      .maybeSingle())
+  }
 
   const slug = (data?.slug as string | undefined) ?? null
   slugCache.set(key, { slug, expires: now + TTL_MS })

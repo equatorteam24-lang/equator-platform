@@ -2,9 +2,19 @@ import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
+const UA_TRANSLIT: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'h',ґ:'g',д:'d',е:'e',є:'ye',ж:'zh',з:'z',и:'y',
+  і:'i',ї:'yi',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',
+  т:'t',у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'shch',ь:'',ю:'yu',я:'ya',
+}
+
 function slugify(text: string): string {
-  return text
+  const transliterated = text
     .toLowerCase()
+    .split('')
+    .map(ch => UA_TRANSLIT[ch] ?? ch)
+    .join('')
+  return transliterated
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/[\s]+/g, '-')
     .replace(/-+/g, '-')
@@ -56,6 +66,11 @@ export async function POST(
   // Derive org name and slug from form_data or project name
   const orgName = project.form_data?.companyName || project.name
   let orgSlug = slugify(project.form_data?.companyName || project.name)
+
+  // Fallback if slug is empty (e.g. only special characters)
+  if (!orgSlug) {
+    orgSlug = `site-${projectId.slice(0, 8)}`
+  }
 
   // Ensure slug uniqueness
   const { data: existing } = await service

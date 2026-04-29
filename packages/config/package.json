@@ -1,5 +1,5 @@
 {
-  "name": "@equator/config",
+  "name": "@uniframe/config",
   "version": "0.1.0",
   "private": true,
   "exports": {

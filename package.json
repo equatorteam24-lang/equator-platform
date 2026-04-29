@@ -1,13 +1,13 @@
 {
-  "name": "equator-platform",
+  "name": "uniframe-platform",
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev:super-admin": "pnpm --filter=@equator/super-admin run dev",
-    "dev:platform": "pnpm --filter=@equator/platform run dev",
-    "build:super-admin": "pnpm --filter=@equator/super-admin run build",
-    "build:platform": "pnpm --filter=@equator/platform run build"
+    "dev:super-admin": "pnpm --filter=@uniframe/super-admin run dev",
+    "dev:platform": "pnpm --filter=@uniframe/platform run dev",
+    "build:super-admin": "pnpm --filter=@uniframe/super-admin run build",
+    "build:platform": "pnpm --filter=@uniframe/platform run build"
   },
   "workspaces": [
     "apps/*",

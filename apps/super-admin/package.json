@@ -1,5 +1,5 @@
 {
-  "name": "@equator/super-admin",
+  "name": "@uniframe/super-admin",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.114",
     "@anthropic-ai/sdk": "^0.90.0",
-    "@equator/db": "workspace:*",
+    "@uniframe/db": "workspace:*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.102.0",
     "next": "16.2.2",

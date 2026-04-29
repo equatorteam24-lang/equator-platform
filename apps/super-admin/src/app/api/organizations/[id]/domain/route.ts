@@ -72,6 +72,16 @@ export async function POST(
     }
   }
 
+  // Update production_url in linked site_projects
+  await service
+    .from('site_projects')
+    .update({
+      production_url: `https://${domain}`,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('org_id', orgId)
+    .eq('status', 'published')
+
   // DNS instructions
   const dns = {
     cname: { type: 'CNAME', name: domain.startsWith('www.') ? 'www' : '@', value: 'cname.vercel-dns.com' },

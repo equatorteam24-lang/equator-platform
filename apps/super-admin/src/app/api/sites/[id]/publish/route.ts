@@ -125,7 +125,79 @@ export async function POST(
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
 
-  // 4. Update site project
+  // 4. Seed site_content from form_data so the admin panel shows real content
+  const fd = project.form_data || {}
+  const contentSections: { org_id: string; section: string; content: Record<string, unknown> }[] = []
+
+  // Hero
+  contentSections.push({
+    org_id: org.id,
+    section: 'hero',
+    content: {
+      title: fd.companyName || orgName,
+      subtitle: fd.companyDescription || '',
+      bgImage: '',
+    },
+  })
+
+  // Contacts
+  if (fd.phone || fd.email || fd.address) {
+    contentSections.push({
+      org_id: org.id,
+      section: 'contacts',
+      content: {
+        phone: fd.phone || '',
+        email: fd.email || email,
+        address: fd.address || '',
+        military: '',
+      },
+    })
+  }
+
+  // Services heading from theme/description
+  if (fd.companyDescription) {
+    contentSections.push({
+      org_id: org.id,
+      section: 'services',
+      content: {
+        heading: fd.theme || fd.companyName || orgName,
+        description: fd.companyDescription,
+        items: [],
+      },
+    })
+  }
+
+  // About
+  contentSections.push({
+    org_id: org.id,
+    section: 'about',
+    content: {
+      heading: fd.companyName || orgName,
+      intro: fd.companyDescription || '',
+      subheading: '',
+      description: fd.extraWishes || '',
+      photo: '',
+      checklist: [],
+      features: [],
+    },
+  })
+
+  // CTA
+  contentSections.push({
+    org_id: org.id,
+    section: 'cta',
+    content: {
+      bgImage: '',
+      title: fd.companyName ? `${fd.companyName} — зв'яжіться з нами` : 'Зв\'яжіться з нами',
+      text: 'Залиште заявку і ми зв\'яжемося з вами найближчим часом.',
+    },
+  })
+
+  if (contentSections.length > 0) {
+    await service.from('site_content').insert(contentSections)
+  }
+
+  // 5. Update site project
   const adminUrl = `https://${org.slug}.uniframe.app/admin`
   const { error: updateError } = await service
     .from('site_projects')
@@ -138,6 +210,7 @@ export async function POST(
     .eq('id', projectId)
 
   if (updateError) {
+    await service.from('site_content').delete().eq('org_id', org.id)
     await service.from('profiles').update({ org_id: null, role: 'editor' }).eq('id', authData.user.id)
     await service.auth.admin.deleteUser(authData.user.id)
     await service.from('organizations').delete().eq('id', org.id)

@@ -478,7 +478,7 @@ export default function SiteProjectPage() {
         <div className="flex items-center gap-3">
           {(project.vercel_url || project.generated_code) && (
             <a
-              href={project.vercel_url || `/api/sites/${id}/preview`}
+              href={project.production_url || project.vercel_url || `/api/sites/${id}/preview`}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:border-gray-400 transition"

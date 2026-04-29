@@ -8,6 +8,7 @@ const nav = [
   { href: '/organizations', label: 'Сайти клієнтів', icon: '🌐' },
   { href: '/sites',         label: 'Конструктор',     icon: '🏗' },
   { href: '/brief',         label: 'Бриф → Промпт',   icon: '📋' },
+  { href: '/users',          label: 'Користувачі',     icon: '👥', superadminOnly: true },
   { href: '/payments',      label: 'Оплати',          icon: '💳', superadminOnly: true },
   { href: '/settings',      label: 'Налаштування',     icon: '⚙️', superadminOnly: true },
 ]

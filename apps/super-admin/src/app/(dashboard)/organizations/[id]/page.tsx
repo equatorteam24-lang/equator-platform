@@ -4,7 +4,7 @@ import Link from 'next/link'
 import UpdatePaymentForm from './UpdatePaymentForm'
 import ResetPasswordForm from './ResetPasswordForm'
 import UpdateDomainForm from './UpdateDomainForm'
-import type { Organization, Lead } from '@equator/db/types'
+import type { Organization, Lead } from '@uniframe/db/types'
 
 export default async function OrganizationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -22,7 +22,7 @@ export default async function OrganizationPage({ params }: { params: Promise<{ i
 
   if (!org) notFound()
 
-  const siteUrl = org.domain ? `https://${org.domain}` : null
+  const siteUrl = org.domain ? `https://${org.domain}` : `https://${org.slug}.uniframe.app`
 
   return (
     <div className="p-8 max-w-5xl space-y-6">
@@ -30,26 +30,17 @@ export default async function OrganizationPage({ params }: { params: Promise<{ i
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{org.name}</h1>
-          <p className="text-sm text-gray-400">{org.domain ?? `slug: ${org.slug}`}</p>
+          <p className="text-sm text-gray-400">{org.domain ?? `${org.slug}.uniframe.app`}</p>
         </div>
         <div className="flex gap-2">
-          {siteUrl && (
-            <>
-              <a href={siteUrl} target="_blank" rel="noopener noreferrer"
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
-                Переглянути сайт ↗
-              </a>
-              <a href={`${siteUrl}/admin`} target="_blank" rel="noopener noreferrer"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">
-                Відкрити адмінку клієнта ↗
-              </a>
-            </>
-          )}
-          {!siteUrl && (
-            <span className="rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-400">
-              Домен не підключено
-            </span>
-          )}
+          <a href={siteUrl} target="_blank" rel="noopener noreferrer"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">
+            Переглянути сайт ↗
+          </a>
+          <a href={`${siteUrl}/admin`} target="_blank" rel="noopener noreferrer"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">
+            Відкрити адмінку клієнта ↗
+          </a>
         </div>
       </div>
 
@@ -61,7 +52,7 @@ export default async function OrganizationPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Domain */}
-      <UpdateDomainForm orgId={org.id} domain={org.domain} />
+      <UpdateDomainForm orgId={org.id} domain={org.domain} slug={org.slug} />
 
       {/* Payment management */}
       <UpdatePaymentForm org={org} />

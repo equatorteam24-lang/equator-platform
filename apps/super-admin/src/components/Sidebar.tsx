@@ -8,13 +8,15 @@ const nav = [
   { href: '/organizations', label: 'Сайти клієнтів', icon: '🌐' },
   { href: '/sites',         label: 'Конструктор',     icon: '🏗' },
   { href: '/brief',         label: 'Бриф → Промпт',   icon: '📋' },
-  { href: '/payments',      label: 'Оплати',          icon: '💳' },
-  { href: '/settings',      label: 'Налаштування',     icon: '⚙️' },
+  { href: '/payments',      label: 'Оплати',          icon: '💳', superadminOnly: true },
+  { href: '/settings',      label: 'Налаштування',     icon: '⚙️', superadminOnly: true },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ role }: { role: string }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+
+  const visibleNav = nav.filter(item => !item.superadminOnly || role === 'superadmin')
 
   return (
     <aside className={`flex-shrink-0 border-r border-gray-200 bg-white flex flex-col transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
@@ -37,7 +39,7 @@ export default function Sidebar() {
       </div>
 
       <nav className={`flex-1 py-4 space-y-0.5 ${collapsed ? 'px-1.5' : 'px-3'}`}>
-        {nav.map(item => {
+        {visibleNav.map(item => {
           const active = pathname.startsWith(item.href)
           return (
             <Link

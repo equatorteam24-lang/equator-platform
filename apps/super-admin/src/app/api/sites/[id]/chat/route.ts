@@ -2,6 +2,7 @@ import { bridgeFetch } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
+import { canAccessDashboard } from '@/lib/roles'
 
 export async function POST(
   req: NextRequest,
@@ -13,7 +14,7 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!canAccessDashboard(profile?.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { message, attachments, apply, tab, deleteIndex } = body as {

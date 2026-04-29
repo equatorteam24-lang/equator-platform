@@ -2,6 +2,7 @@ import { bridgeFetch } from '@/lib/bridge'
 import { createServiceClient } from '@/lib/service'
 import { createClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
+import { canAccessDashboard } from '@/lib/roles'
 
 export async function POST(req: NextRequest) {
   // Verify superadmin
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!canAccessDashboard(profile?.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
   const { name, formData } = body
@@ -158,17 +159,17 @@ Uniframe — це веб-агентство що створює преміаль
 - Форми з валідацією
 - НЕ використовувати Lorem ipsum
 
-### Зображення та медіа — ТІЛЬКИ Freepik
-⚠️ КРИТИЧНО: Всі зображення ОБОВ'ЯЗКОВО брати з Freepik.
-- Використовуй WebSearch для пошуку: site:freepik.com {запит англійською}
-- Потім WebFetch щоб отримати сторінку Freepik і знайти прямий URL зображення
-- URL формат Freepik: https://img.freepik.com/free-photo/{slug}.jpg або https://img.freepik.com/premium-photo/{slug}.jpg
-- Додавай параметри розміру: ?w=1920&q=80 або ?w=1280&q=80 для менших зображень
-- ❌ ЗАБОРОНЕНО: Unsplash, Pexels, Pixabay, placeholder URLs, via.placeholder.com
+### Зображення та медіа — ТІЛЬКИ Unsplash, Pexels, Pixabay
+⚠️ КРИТИЧНО: Всі зображення ОБОВ'ЯЗКОВО брати з 3 безкоштовних джерел:
+- **Unsplash:** WebSearch: site:unsplash.com {запит англійською}, потім WebFetch для прямого URL
+- **Pexels:** WebSearch: site:pexels.com {запит англійською}, потім WebFetch для прямого URL
+- **Pixabay:** WebSearch: site:pixabay.com {запит англійською}, потім WebFetch для прямого URL
+- Додавай параметри розміру де можливо: ?w=1920&q=80 або ?w=1280&q=80
+- ❌ ЗАБОРОНЕНО: Freepik, placeholder URLs, via.placeholder.com
 - ❌ ЗАБОРОНЕНО: вигадувати URL зображень — кожен URL має бути реальним, перевіреним через WebSearch/WebFetch
 - Шукай релевантні фото для кожної секції (hero, about, services тощо)
 - Мінімум 5-8 різних зображень на сайт для візуального різноманіття
-- Для відео: шукай відео на Freepik (site:freepik.com video {запит}) або використовуй відео-обкладинки
+- Для відео: шукай відео на Pexels (site:pexels.com video {запит}) або Pixabay
 `
 
   const brief: string[] = []

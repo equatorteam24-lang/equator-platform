@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { isSuperadmin } from '@/lib/roles'
 import UpdatePaymentForm from './UpdatePaymentForm'
 import ResetPasswordForm from './ResetPasswordForm'
 import UpdateDomainForm from './UpdateDomainForm'
@@ -9,6 +10,15 @@ import type { Organization, Lead } from '@uniframe/db/types'
 export default async function OrganizationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user!.id)
+    .single() as { data: { role: string } | null }
+
+  const isAdmin = isSuperadmin(profile?.role)
 
   const [orgResult, leadsResult, leadsCountResult] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', id).single(),
@@ -45,20 +55,20 @@ export default async function OrganizationPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className={`grid gap-4 ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
         <StatCard label="Заявок всього" value={String(leadsCount ?? 0)} />
-        <StatCard label="Статус оплати" value={org.payment_status} />
-        <StatCard label="Оплачено до" value={org.paid_until ? new Date(org.paid_until).toLocaleDateString('uk-UA') : '—'} />
+        {isAdmin && <StatCard label="Статус оплати" value={org.payment_status} />}
+        {isAdmin && <StatCard label="Оплачено до" value={org.paid_until ? new Date(org.paid_until).toLocaleDateString('uk-UA') : '—'} />}
       </div>
 
-      {/* Domain */}
-      <UpdateDomainForm orgId={org.id} domain={org.domain} slug={org.slug} />
+      {/* Domain — superadmin only */}
+      {isAdmin && <UpdateDomainForm orgId={org.id} domain={org.domain} slug={org.slug} />}
 
-      {/* Payment management */}
-      <UpdatePaymentForm org={org} />
+      {/* Payment management — superadmin only */}
+      {isAdmin && <UpdatePaymentForm org={org} />}
 
-      {/* Client access */}
-      <ResetPasswordForm orgId={org.id} />
+      {/* Client access — superadmin only */}
+      {isAdmin && <ResetPasswordForm orgId={org.id} />}
 
       {/* Recent leads */}
       <div className="bg-white rounded-xl border border-gray-200">

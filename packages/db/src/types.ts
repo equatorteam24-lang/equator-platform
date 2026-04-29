@@ -3,7 +3,7 @@
 // Run `pnpm supabase gen types` to regenerate after schema changes.
 
 export type OrganizationStatus = 'active' | 'suspended' | 'trial'
-export type UserRole = 'superadmin' | 'admin' | 'editor'
+export type UserRole = 'superadmin' | 'team' | 'admin' | 'editor'
 export type LeadStatus = 'new' | 'in_progress' | 'closed' | 'spam'
 export type PaymentStatus = 'paid' | 'unpaid' | 'overdue' | 'trial'
 export type PageStatus = 'published' | 'draft'

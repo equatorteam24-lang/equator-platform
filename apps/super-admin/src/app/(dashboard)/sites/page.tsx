@@ -65,9 +65,9 @@ export default async function SitesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {p.vercel_url ? (
+                    {(p.production_url || p.vercel_url) ? (
                       <a
-                        href={p.vercel_url}
+                        href={p.production_url || p.vercel_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 text-xs"

@@ -1,5 +1,5 @@
 import Script from 'next/script'
-import type { OrganizationSettings } from '@equator/db/types'
+import type { OrganizationSettings } from '@uniframe/db/types'
 
 interface Props {
   settings: OrganizationSettings

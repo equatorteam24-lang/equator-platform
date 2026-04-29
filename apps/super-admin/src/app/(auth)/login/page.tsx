@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Equator Platform</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Uniframe</h1>
           <p className="mt-1 text-sm text-gray-500">Super Admin</p>
         </div>
 
@@ -52,7 +52,7 @@ export default function LoginPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
-              placeholder="admin@equator.agency"
+              placeholder="admin@uniframe.app"
             />
           </div>
 

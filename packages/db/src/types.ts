@@ -14,7 +14,7 @@ export interface Organization {
   id: string
   name: string
   domain: string | null
-  slug: string                     // used in URL: admin.equator.agency/org/:slug
+  slug: string                     // used in URL: admin.uniframe.app/org/:slug
   status: OrganizationStatus
   payment_status: PaymentStatus
   paid_until: string | null        // ISO date

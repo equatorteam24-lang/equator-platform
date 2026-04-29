@@ -7,7 +7,7 @@ import ModalProvider from '@/components/ModalProvider'
 import { createClient } from '@/lib/supabase'
 import { createServiceClient } from '@/lib/service'
 import { getCurrentOrgId } from '@/lib/org'
-import type { OrganizationSettings } from '@equator/db/types'
+import type { OrganizationSettings } from '@uniframe/db/types'
 import './globals.css'
 
 const onest = Onest({

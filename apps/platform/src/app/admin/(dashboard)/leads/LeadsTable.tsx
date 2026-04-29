@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
-import type { Lead } from '@equator/db/types'
+import type { Lead } from '@uniframe/db/types'
 
 const statusOptions = [
   { value: 'all',         label: 'Всі' },

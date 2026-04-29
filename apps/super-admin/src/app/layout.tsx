@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin', 'cyrillic'] })
 
 export const metadata: Metadata = {
-  title: 'Equator Super Admin',
+  title: 'Uniframe Super Admin',
   description: 'Platform management dashboard',
   robots: { index: false, follow: false },
 }

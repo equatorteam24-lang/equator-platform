@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
-import type { Organization, OrganizationSettings, ScriptFile } from '@equator/db/types'
+import type { Organization, OrganizationSettings, ScriptFile } from '@uniframe/db/types'
 
 export default function SettingsForm({ org }: { org: Organization }) {
   const router = useRouter()

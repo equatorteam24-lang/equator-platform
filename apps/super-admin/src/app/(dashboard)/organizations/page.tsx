@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
-import type { Organization } from '@equator/db/types'
+import type { Organization } from '@uniframe/db/types'
 
 const statusLabel: Record<string, string> = {
   active:    'Активний',

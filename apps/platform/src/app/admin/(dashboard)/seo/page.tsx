@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase'
 import { getCurrentOrgId } from '@/lib/org'
 import SeoEditor from './SeoEditor'
-import type { PageSeo } from '@equator/db/types'
+import type { PageSeo } from '@uniframe/db/types'
 
 export default async function SeoPage() {
   const orgId = await getCurrentOrgId()

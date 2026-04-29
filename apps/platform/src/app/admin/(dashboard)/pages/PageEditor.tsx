@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
-import type { Page } from '@equator/db/types'
+import type { Page } from '@uniframe/db/types'
 
 export default function PageEditor({ page, orgId }: { page?: Page; orgId: string }) {
   const router = useRouter()

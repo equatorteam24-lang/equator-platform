@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/client'
 import { useRouter } from 'next/navigation'
-import type { PageSeo } from '@equator/db/types'
+import type { PageSeo } from '@uniframe/db/types'
 
 type PageRow = {
   id:          string

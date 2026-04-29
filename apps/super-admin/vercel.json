@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter=@equator/super-admin run build",
+  "buildCommand": "pnpm --filter=@uniframe/super-admin run build",
   "outputDirectory": ".next"
 }
